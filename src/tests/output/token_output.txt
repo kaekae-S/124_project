@@ -1,0 +1,914 @@
+LOLCODE Lexer Token Output
+============================================================
+
+
+=== TOKENS from 01_variables.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : monde
+Keyword    : I HAS A
+Identifier : num
+Keyword    : ITZ
+NUMBR      : 17
+Keyword    : I HAS A
+Identifier : name
+Keyword    : ITZ
+YARN       : "seventeen"
+Keyword    : I HAS A
+Identifier : fnum
+Keyword    : ITZ
+NUMBAR     : 17.0
+Keyword    : I HAS A
+Identifier : flag
+Keyword    : ITZ
+TROOF      : WIN
+Keyword    : I HAS A
+Identifier : sum
+Keyword    : ITZ
+Keyword    : SUM OF
+Identifier : num
+Keyword    : AN
+NUMBR      : 13
+Keyword    : I HAS A
+Identifier : diff
+Keyword    : ITZ
+Keyword    : DIFF OF
+Identifier : sum
+Keyword    : AN
+NUMBR      : 17
+Keyword    : I HAS A
+Identifier : prod
+Keyword    : ITZ
+Keyword    : PRODUKT OF
+NUMBR      : 3
+Keyword    : AN
+NUMBR      : 4
+Keyword    : I HAS A
+Identifier : quo
+Keyword    : ITZ
+Keyword    : QUOSHUNT OF
+NUMBR      : 4
+Keyword    : AN
+NUMBR      : 5
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "declarations"
+Keyword    : VISIBLE
+Identifier : monde
+Keyword    : BTW
+Identifier : should
+Identifier : be
+NOOB       : NOOB
+Keyword    : VISIBLE
+Identifier : num
+Keyword    : VISIBLE
+Identifier : name
+Keyword    : VISIBLE
+Identifier : fnum
+Keyword    : VISIBLE
+Identifier : flag
+Keyword    : VISIBLE
+Identifier : sum
+Keyword    : VISIBLE
+Identifier : diff
+Keyword    : VISIBLE
+Identifier : prod
+Keyword    : VISIBLE
+Identifier : quo
+Keyword    : VISIBLE
+Keyword    : SUM OF
+Keyword    : PRODUKT OF
+NUMBR      : 3
+Keyword    : AN
+NUMBR      : 5
+Keyword    : AN
+Keyword    : BIGGR OF
+Keyword    : DIFF OF
+NUMBR      : 17
+Keyword    : AN
+NUMBR      : 2
+Keyword    : AN
+NUMBR      : 5
+Keyword    : VISIBLE
+Keyword    : BIGGR OF
+Keyword    : PRODUKT OF
+NUMBR      : 11
+Keyword    : AN
+NUMBR      : 2
+Keyword    : AN
+Keyword    : QUOSHUNT OF
+Keyword    : SUM OF
+NUMBR      : 3
+Keyword    : AN
+NUMBR      : 5
+Keyword    : AN
+NUMBR      : 2
+Keyword    : KTHXBYE
+
+Total tokens: 102
+
+
+=== TOKENS from 02_gimmeh.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : monde
+Keyword    : I HAS A
+Identifier : num
+Keyword    : ITZ
+NUMBR      : 17
+Keyword    : BUHBYE
+Keyword    : GIMMEH
+Identifier : monde
+Keyword    : VISIBLE
+Keyword    : SUM OF
+Identifier : monde
+Keyword    : AN
+Identifier : num
+Keyword    : VISIBLE
+Identifier : monde
+Keyword    : GIMMEH
+Identifier : num
+Keyword    : GIMMEH
+Identifier : monde
+Keyword    : VISIBLE
+Keyword    : DIFF OF
+Identifier : num
+Keyword    : AN
+Identifier : monde
+Keyword    : KTHXBYE
+
+Total tokens: 28
+
+
+=== TOKENS from 03_arith.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : x
+Keyword    : I HAS A
+Identifier : y
+Keyword    : BUHBYE
+Keyword    : GIMMEH
+Identifier : x
+Keyword    : GIMMEH
+Identifier : y
+Keyword    : VISIBLE
+Identifier : x
+YARN       : "+"
+Identifier : y
+YARN       : " = "
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : x
+YARN       : "-"
+Identifier : y
+YARN       : " = "
+Keyword    : DIFF OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : x
+YARN       : "*"
+Identifier : y
+YARN       : " = "
+Keyword    : PRODUKT OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : x
+YARN       : "/"
+Identifier : y
+YARN       : " = "
+Keyword    : QUOSHUNT OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : x
+YARN       : "%"
+Identifier : y
+YARN       : " = "
+Keyword    : MOD OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+YARN       : "max("
+Identifier : x
+YARN       : ","
+Identifier : y
+YARN       : ") = "
+Keyword    : BIGGR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+YARN       : "min("
+Identifier : x
+YARN       : ","
+Identifier : y
+YARN       : ") = "
+Keyword    : SMALLR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : SUM OF
+Keyword    : PRODUKT OF
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Keyword    : PRODUKT OF
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : PRODUKT OF
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : DIFF OF
+Keyword    : BIGGR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Keyword    : SMALLR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+Keyword    : SUM OF
+Keyword    : QUOSHUNT OF
+Identifier : y
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+TROOF      : FAIL
+Keyword    : VISIBLE
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+Keyword    : SUM OF
+Keyword    : QUOSHUNT OF
+YARN       : "17"
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+TROOF      : FAIL
+Keyword    : KTHXBYE
+
+Total tokens: 132
+
+
+=== TOKENS from 04_smoosh_assign.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : x
+Keyword    : I HAS A
+Identifier : y
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "Hello! Please enter two strings:"
+Keyword    : VISIBLE
+YARN       : "String 1: "
+Keyword    : GIMMEH
+Identifier : x
+Keyword    : VISIBLE
+YARN       : "String 2: "
+Keyword    : GIMMEH
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : SMOOSH
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : SMOOSH
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Identifier : x
+Keyword    : R
+Keyword    : SMOOSH
+Identifier : x
+Keyword    : AN
+Identifier : y
+Identifier : y
+Keyword    : R
+NUMBR      : 100
+Keyword    : VISIBLE
+Identifier : x
+Keyword    : AN
+NUMBR      : 52615
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Keyword    : MOD OF
+NUMBR      : 10
+Keyword    : AN
+NUMBR      : 6
+Keyword    : AN
+YARN       : "End!"
+Keyword    : VISIBLE
+NUMBR      : 10
+Keyword    : AN
+Identifier : y
+Identifier : y
+Keyword    : IS NOW A
+Identifier : NUMBAR
+Keyword    : VISIBLE
+NUMBR      : 10
+Keyword    : AN
+Identifier : y
+Identifier : y
+Keyword    : R
+NUMBR      : 0
+Identifier : y
+Keyword    : R
+Keyword    : MAEK
+Keyword    : A
+Identifier : y
+Identifier : TROOF
+Keyword    : VISIBLE
+Identifier : y
+Keyword    : KTHXBYE
+
+Total tokens: 78
+
+
+=== TOKENS from 05_bool.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : x
+Keyword    : I HAS A
+Identifier : y
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "x: "
+TROOF      : FAIL
+YARN       : ", y: "
+TROOF      : WIN
+Identifier : x
+Keyword    : R
+TROOF      : WIN
+Identifier : y
+Keyword    : R
+TROOF      : WIN
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : EITHER OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : WON OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : NOT
+Identifier : x
+Keyword    : VISIBLE
+Keyword    : ALL OF
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+NUMBR      : 0
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : NOT
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+YARN       : "x: "
+TROOF      : FAIL
+YARN       : ", y: "
+TROOF      : WIN
+Identifier : x
+Keyword    : R
+TROOF      : FAIL
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : EITHER OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : WON OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : NOT
+Identifier : x
+Keyword    : VISIBLE
+Keyword    : ALL OF
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+NUMBR      : 0
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : NOT
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+YARN       : "x: "
+TROOF      : FAIL
+YARN       : ", y: "
+TROOF      : WIN
+Identifier : y
+Keyword    : R
+TROOF      : FAIL
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : EITHER OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : WON OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Identifier : NOT
+Identifier : x
+Keyword    : VISIBLE
+Keyword    : ALL OF
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+NUMBR      : 0
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : ANY OF
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : NOT
+Identifier : y
+Keyword    : MKAY
+Keyword    : VISIBLE
+Keyword    : BOTH OF
+Identifier : x
+Keyword    : AN
+Keyword    : EITHER OF
+Identifier : NOT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : KTHXBYE
+
+Total tokens: 224
+
+
+=== TOKENS from 06_comparison.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : x
+Keyword    : I HAS A
+Identifier : y
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "Value 1: "
+Keyword    : GIMMEH
+Identifier : x
+Keyword    : VISIBLE
+YARN       : "Value 2: "
+Keyword    : GIMMEH
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : BOTH SAEM
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : DIFFRINT
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : BOTH SAEM
+Keyword    : BIGGR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : x
+Keyword    : VISIBLE
+Keyword    : BOTH SAEM
+Identifier : x
+Keyword    : AN
+Keyword    : SMALLR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : VISIBLE
+Keyword    : DIFFRINT
+Keyword    : BIGGR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : AN
+Identifier : x
+Keyword    : VISIBLE
+Keyword    : DIFFRINT
+Identifier : x
+Keyword    : AN
+Keyword    : SMALLR OF
+Identifier : x
+Keyword    : AN
+Identifier : y
+Keyword    : KTHXBYE
+
+Total tokens: 58
+
+
+=== TOKENS from 07_ifelse.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : choice
+Keyword    : I HAS A
+Identifier : input
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "1. Compute age"
+Keyword    : VISIBLE
+YARN       : "2. Compute tip"
+Keyword    : VISIBLE
+YARN       : "3. Compute square area"
+Keyword    : VISIBLE
+YARN       : "0. Exit"
+Keyword    : VISIBLE
+YARN       : "Choice: "
+Keyword    : GIMMEH
+Identifier : choice
+Keyword    : BOTH SAEM
+Identifier : choice
+Keyword    : AN
+NUMBR      : 1
+Identifier : O
+Identifier : RLY
+Keyword    : YA RLY
+Keyword    : VISIBLE
+YARN       : "Enter birth year: "
+Keyword    : GIMMEH
+Identifier : input
+Keyword    : VISIBLE
+Keyword    : DIFF OF
+NUMBR      : 2022
+Keyword    : AN
+Identifier : input
+Keyword    : NO WAI
+Keyword    : VISIBLE
+YARN       : "Invalid Input!"
+Keyword    : OIC
+Keyword    : DIFFRINT
+Keyword    : BIGGR OF
+NUMBR      : 3
+Keyword    : AN
+Identifier : choice
+Keyword    : AN
+NUMBR      : 3
+Identifier : O
+Identifier : RLY
+Keyword    : YA RLY
+Keyword    : VISIBLE
+YARN       : "Invalid input is > 3."
+Keyword    : OIC
+Keyword    : KTHXBYE
+
+Total tokens: 53
+
+
+=== TOKENS from 08_switch.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : choice
+Keyword    : I HAS A
+Identifier : input
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "1. Compute age"
+Keyword    : VISIBLE
+YARN       : "2. Compute tip"
+Keyword    : VISIBLE
+YARN       : "3. Compute square area"
+Keyword    : VISIBLE
+YARN       : "0. Exit"
+Keyword    : VISIBLE
+YARN       : "Choice: "
+Keyword    : GIMMEH
+Identifier : choice
+Identifier : choice
+Identifier : WTF
+Keyword    : OMG
+NUMBR      : 1
+Keyword    : VISIBLE
+YARN       : "Enter birth year: "
+Keyword    : GIMMEH
+Identifier : input
+Keyword    : VISIBLE
+Keyword    : DIFF OF
+NUMBR      : 2022
+Keyword    : AN
+Identifier : input
+Keyword    : GTFO
+Keyword    : OMG
+NUMBR      : 2
+Keyword    : VISIBLE
+YARN       : "Enter bill cost: "
+Keyword    : GIMMEH
+Identifier : input
+Keyword    : VISIBLE
+YARN       : "Tip: "
+Identifier : PRODUCKT
+Identifier : OF
+Identifier : input
+Keyword    : AN
+NUMBAR     : 0.1
+Keyword    : GTFO
+Keyword    : OMG
+NUMBR      : 3
+Keyword    : VISIBLE
+YARN       : "Enter width: "
+Keyword    : GIMMEH
+Identifier : input
+Keyword    : VISIBLE
+YARN       : "Square Area: "
+Keyword    : PRODUKT OF
+Identifier : input
+Keyword    : AN
+Identifier : input
+Keyword    : GTFO
+Keyword    : OMG
+NUMBR      : 0
+Keyword    : VISIBLE
+YARN       : "Goodbye"
+Keyword    : OMGWTF
+Keyword    : VISIBLE
+YARN       : "Invalid Input!"
+Keyword    : OIC
+Keyword    : KTHXBYE
+
+Total tokens: 69
+
+
+=== TOKENS from 09_loops.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : num1
+Keyword    : I HAS A
+Identifier : num2
+Keyword    : BUHBYE
+Keyword    : VISIBLE
+YARN       : "Gimmeh a number: "
+Keyword    : GIMMEH
+Identifier : num1
+Identifier : num2
+Keyword    : R
+NUMBR      : 0
+Keyword    : IM IN YR
+Identifier : asc
+Keyword    : UPPIN
+Keyword    : YR
+Identifier : num2
+Keyword    : WILE
+Keyword    : BOTH SAEM
+Identifier : num2
+Keyword    : AN
+Keyword    : SMALLR OF
+Identifier : num2
+Keyword    : AN
+Identifier : num1
+Keyword    : VISIBLE
+Identifier : num2
+Keyword    : IM OUTTA YR
+Identifier : asc
+Keyword    : VISIBLE
+YARN       : "***"
+Keyword    : IM IN YR
+Identifier : desc
+Keyword    : NERFIN
+Keyword    : YR
+Identifier : num2
+Keyword    : TIL
+Keyword    : BOTH SAEM
+Identifier : num2
+Keyword    : AN
+NUMBR      : 0
+Keyword    : VISIBLE
+Identifier : num2
+Keyword    : IM OUTTA YR
+Identifier : desc
+Keyword    : KTHXBYE
+
+Total tokens: 48
+
+
+=== TOKENS from 10_functions.lol ===
+Keyword    : HAI
+Keyword    : WAZZUP
+Keyword    : I HAS A
+Identifier : name
+Keyword    : I HAS A
+Identifier : num1
+Keyword    : I HAS A
+Identifier : num2
+Keyword    : BUHBYE
+Keyword    : HOW IZ I
+Identifier : addNum
+Keyword    : YR
+Identifier : x
+Keyword    : AN
+Keyword    : YR
+Identifier : y
+Keyword    : FOUND YR
+Keyword    : SUM OF
+Identifier : x
+Identifier : an
+Identifier : y
+Keyword    : IF U SAY SO
+Keyword    : HOW IZ I
+Identifier : printName
+Keyword    : YR
+Identifier : person
+Keyword    : VISIBLE
+YARN       : "Hello, "
+Identifier : person
+Keyword    : GTFO
+Keyword    : IF U SAY SO
+Keyword    : HOW IZ I
+Identifier : printNum
+Keyword    : YR
+Identifier : x
+Keyword    : FOUND YR
+Identifier : x
+Keyword    : IF U SAY SO
+Keyword    : GIMMEH
+Identifier : num1
+Keyword    : GIMMEH
+Identifier : num2
+Keyword    : I IZ
+Identifier : addNum
+Keyword    : YR
+Identifier : num1
+Keyword    : AN
+Keyword    : YR
+Identifier : num2
+Keyword    : VISIBLE
+Identifier : IT
+Keyword    : GIMMEH
+Identifier : name
+Keyword    : I IZ
+Identifier : printName
+Keyword    : YR
+Identifier : name
+Keyword    : VISIBLE
+Identifier : IT
+Keyword    : I IZ
+Identifier : printNum
+Keyword    : YR
+Keyword    : SUM OF
+Identifier : x
+Keyword    : AN
+NUMBR      : 2
+Keyword    : VISIBLE
+Identifier : IT
+Keyword    : KTHXBYE
+
+Total tokens: 69
+
