@@ -1,166 +1,75 @@
 import re
-from typing import List, Dict
 
-# List of multi-word keywords (order matters: longer/multi-word first)
-_MULTIWORD_KEYWORDS = [
-    r"I\s+HAS\s+A",
-    r"SUM\s+OF",
-    r"DIFF\s+OF",
-    r"PRODUKT\s+OF",
-    r"QUOSHUNT\s+OF",
-    r"MOD\s+OF",
-    r"BIGGR\s+OF",
-    r"SMALLR\s+OF",
-    r"BOTH\s+OF",
-    r"EITHER\s+OF",
-    r"WON\s+OF",
-    r"ALL\s+OF",
-    r"ANY\s+OF",
-    r"BOTH\s+SAEM",
-    r"DIFFRINT",
-    r"IS\s+NOW\s+A",
-    r"IM\s+IN\s+YR",
-    r"IM\s+OUTTA\s+YR",
-    r"HOW\s+IZ\s+I",
-    r"FOUND\s+YR",
-    r"IF\s+U\s+SAY\s+SO",
-    r"SUM\s+OF",
-]
-
-# Single-word keywords and punctuation-words (escape question marks)
-_SINGLEWORD_KEYWORDS = [
-    r"HAI", r"KTHXBYE", r"WAZZUP", r"BUHBYE", r"BTW", r"OBTW", r"TLDR",
-    r"ITZ", r"R", r"SMOOSH", r"MAEK", r"A", r"VISIBLE", r"GIMMEH",
-    r"O\s+RLY\?", r"YA\s+RLY", r"MEBBE", r"NO\s+WAI", r"OIC",
-    r"WTF\?", r"OMG", r"OMGWTF",
-    r"UPPIN", r"NERFIN", r"YR", r"TIL", r"WILE",
-    r"GTFO", r"I\s+IZ", r"MKAY"
-]
-
-# Combine and order: YARN first, multiword keywords, single-word keywords, TROOF, NUMBAR, NUMBR, IDENTIFIER
 class Lexer:
-    def __init__(self, ignore_case: bool = True):
-        flags = re.IGNORECASE if ignore_case else 0
+    def __init__(self):
+        # Ordered patterns (longest first — ensures multiword keywords are caught first)
+        self.token_patterns = [
+            # Multi-word keywords
+            ("Keyword", r"\b(I HAS A|SUM OF|DIFF OF|PRODUKT OF|QUOSHUNT OF|MOD OF|BIGGR OF|SMALLR OF|"
+                        r"BOTH SAEM|DIFFRINT|BOTH OF|EITHER OF|WON OF|ALL OF|ANY OF|IM IN YR|"
+                        r"IM OUTTA YR|HOW IZ I|FOUND YR|IS NOW A|IF U SAY SO)\b"),
 
-        # YARN literal must be matched first because it can contain spaces
-        self.yarn_re = re.compile(r'^"([^"\\]*(?:\\.[^"\\]*)*)"', flags)
+            # Single-word keywords
+            ("Keyword", r"\b(HAI|KTHXBYE|WAZZUP|BUHBYE|BTW|OBTW|TLDR|ITZ|R|VISIBLE|GIMMEH|"
+                        r"O RLY\?|YA RLY|MEBBE|NO WAI|OIC|WTF\?|OMG|OMGWTF|"
+                        r"UPPIN|NERFIN|YR|TIL|WILE|GTFO|I IZ|MKAY|AN|A|MAEK|SMOOSH)\b"),
 
-        # Build ordered token patterns (anchored with ^ for matching at the current position)
-        self.ordered_patterns = []
+            # Literals
+            ("NUMBAR", r"-?\d+\.\d+"),      # floating-point
+            ("NUMBR", r"-?\d+"),            # integer
+            ("TROOF", r"\b(WIN|FAIL)\b"),   # boolean
+            ("YARN", r'"[^"]*"'),           # string
+            ("NOOB", r"\bNOOB\b"),          # uninitialized / null-like literal
 
-        # Multi-word keywords
-        for kw in _MULTIWORD_KEYWORDS:
-            pat = rf'^{kw}\b'
-            self.ordered_patterns.append(("KEYWORD", re.compile(pat, flags)))
+            # Identifiers (variables, functions, loops)
+            ("Identifier", r"[A-Za-z][A-Za-z0-9_]*"),
+        ]
 
-        # Single-word keywords / punctuation-words
-        for kw in _SINGLEWORD_KEYWORDS:
-            pat = rf'^{kw}\b'
-            self.ordered_patterns.append(("KEYWORD", re.compile(pat, flags)))
+        # Comment patterns
+        self.comment_single = re.compile(r"BTW.*")
+        self.comment_start = re.compile(r"OBTW")
+        self.comment_end = re.compile(r"TLDR")
 
-        # TROOF (WIN/FAIL)
-        self.ordered_patterns.append(("TROOF_LITERAL", re.compile(r'^(WIN|FAIL)\b', flags)))
-
-        # NUMBAR then NUMBR (NUMBAR has a decimal point)
-        # Allow optional leading minus sign
-        self.ordered_patterns.append(("NUMBAR_LITERAL", re.compile(r'^-?\d+\.\d+\b', flags)))
-        self.ordered_patterns.append(("NUMBR_LITERAL", re.compile(r'^-?\d+\b', flags)))
-
-        # Identifiers (variable/function/loop identifiers share same pattern in spec)
-        self.ordered_patterns.append(("IDENTIFIER", re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*\b', flags)))
-
-        # Single-line comment (BTW...) — we'll handle comments specially at line start or inline
-        self.comment_re = re.compile(r'\bBTW\b', flags)
-        # Multiline comment markers
-        self.obtw_re = re.compile(r'^\s*OBTW\b', flags)
-        self.tldr_re = re.compile(r'^\s*TLDR\b', flags)
-
-        # Generic word fallback (to ensure we parse every chunk)
-        self.fallback_re = re.compile(r'^\S+')
-
-    def tokenize(self, code: str) -> List[Dict]:
-        """
-        Tokenize the given source code into a list of token dicts:
-        {"type": <TYPE>, "value": <lexeme>, "line": <line_no>, "col": <col_index>}
-        """
+    def tokenize(self, code: str):
+        """Tokenizes LOLCODE source code into a list of token dictionaries."""
         tokens = []
         in_multiline_comment = False
-        lines = code.splitlines()
 
-        for line_num, raw_line in enumerate(lines, start=1):
-            line = raw_line.rstrip('\n')
-            pos = 0
-            length = len(line)
+        for line_num, line in enumerate(code.splitlines(), start=1):
+            line = line.strip()
+            if not line:
+                continue
 
-            # Check multiline comment start (OBTW) anywhere in line but rules state it must be alone on line,
-            # however we handle robustly.
-            if self.obtw_re.match(line):
+            # Handle multi-line comments
+            if self.comment_start.search(line):
                 in_multiline_comment = True
-                tokens.append({"type": "COMMENT_START", "value": "OBTW", "line": line_num, "col": 0})
                 continue
-
-            if self.tldr_re.match(line):
+            if self.comment_end.search(line):
                 in_multiline_comment = False
-                tokens.append({"type": "COMMENT_END", "value": "TLDR", "line": line_num, "col": 0})
                 continue
-
             if in_multiline_comment:
-                # emit the line as part of comment (optional)
-                tokens.append({"type": "COMMENT_CONTENT", "value": line, "line": line_num, "col": 0})
                 continue
 
-            # Walk through the line left-to-right
-            while pos < length:
-                # Skip whitespace
-                if line[pos].isspace():
-                    pos += 1
-                    continue
+            # Skip single-line comments
+            if self.comment_single.match(line):
+                continue
 
-                remaining = line[pos:]
-
-                # Check for inline single-line comment start 'BTW' (it and the rest of line are a comment)
-                m_comment = self.comment_re.search(remaining)
-                if m_comment and m_comment.start() == 0:
-                    # the rest of the line is comment
-                    comment_text = remaining
-                    tokens.append({"type": "COMMENT", "value": comment_text, "line": line_num, "col": pos})
-                    pos = length
-                    break
-                elif m_comment and m_comment.start() > 0:
-                    # there is a BTW later in the remaining text; but we should match tokens up to that point
-                    # We'll allow normal matching until pos reaches that index.
-                    pass
-
-                # YARN literal (must be checked first)
-                myarn = self.yarn_re.match(remaining)
-                if myarn:
-                    lex = myarn.group(0)
-                    tokens.append({"type": "YARN_LITERAL", "value": lex, "line": line_num, "col": pos})
-                    pos += len(lex)
-                    continue
-
-                # Try ordered patterns (multi-word + single-word keywords, TROOF, numbers, identifier)
-                matched = False
-                for tok_type, cre in self.ordered_patterns:
-                    m = cre.match(remaining)
-                    if m:
-                        lex = m.group(0)
-                        tokens.append({"type": tok_type, "value": lex, "line": line_num, "col": pos})
-                        pos += len(lex)
-                        matched = True
+            pos = 0
+            while pos < len(line):
+                match = None
+                for token_type, pattern in self.token_patterns:
+                    regex = re.compile(pattern)
+                    match = regex.match(line, pos)
+                    if match:
+                        value = match.group().strip()
+                        tokens.append({
+                            "type": token_type,
+                            "value": value,
+                            "line": line_num
+                        })
+                        pos = match.end()
                         break
-                if matched:
-                    continue
-
-                # Fallback: take next non-space chunk so we never skip words
-                mf = self.fallback_re.match(remaining)
-                if mf:
-                    lex = mf.group(0)
-                    tokens.append({"type": "UNKNOWN", "value": lex, "line": line_num, "col": pos})
-                    pos += len(lex)
-                    continue
-
-                # If nothing matched (shouldn't happen), advance one char to avoid infinite loop
-                pos += 1
+                if not match:
+                    pos += 1  # skip unmatched characters
 
         return tokens
