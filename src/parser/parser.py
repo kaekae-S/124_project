@@ -203,3 +203,96 @@ class Parser:
             expression_node = self.parse_expression()
         
         return VariableDeclarationNode(i_has_a_node, identifier_node, itz_node, expression_node, line=line)
+    
+    def parse_print_statement(self):
+        # Parse: PrintStatement -> VISIBLE Expression
+        line = self.current_token['line'] if self.current_token else None
+        visible_token = self.current_token
+        # consume VISIBLE
+        self.expect('VISIBLE')
+        visible_node = ParseTreeNode("VISIBLE", [], visible_token, line=line)
+        expr_node = self.parse_expression()
+        return PrintStatementNode(visible_node, expr_node, line=line)
+
+
+    # --- Expressions ---
+    # Note, the multi-line strings here are docstrings for documentation
+
+    def parse_expression(self):
+        """Expression -> BinaryExpression | PrimaryExpression"""
+        # attempt to parse binary expression
+        binary = self.parse_binary_expression()
+        if binary:
+            return binary
+        return self.parse_primary_expression()
+
+
+    # Arithmetic operations
+    def parse_binary_expression(self):
+        """BinaryExpression -> Operator Expression AN Expression
+        Operator token values: 'SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF',
+        'MOD OF', 'BIGGR OF', 'SMALLR OF'.
+        """
+        # Identify if operator
+        if not self.current_token:
+            return None
+
+        # Accept operators as value strings
+        op_values = {"SUM OF", "DIFF OF", "PRODUKT OF", "QUOSHUNT OF",  "MOD OF", "BIGGR OF", "SMALLR OF"}
+
+        cur = self.current_token
+        is_op = (cur.get('value') in op_values)
+        if not is_op:
+            return None
+
+        # operator node
+        operator_token = cur
+        operator_node = ParseTreeNode("Operator", [], operator_token, line=operator_token.get('line'))
+        self.advance()
+
+        # left operand (Expression)
+        left = self.parse_expression()
+        if not left:
+            raise SyntaxError(f"Line {operator_token.get('line')}: Expected left operand after operator {operator_token}")
+
+        # require AN separator
+        if not self.current_token or not self.current_token.get('value') == 'AN':
+            raise SyntaxError(f"Line {operator_token.get('line')}: Expected 'AN' between operands of {operator_token.get('value')}")
+        an_token = self.current_token
+        an_node = ParseTreeNode("AN", [], an_token, line=an_token.get('line'))
+        self.advance()
+
+        # right operand (Expression)
+        right = self.parse_expression()
+        if not right:
+            raise SyntaxError(f"Line {operator_token.get('line')}: Expected right operand after 'AN'")
+
+        return BinaryExpressionNode(operator_node, left, an_node, right, line=operator_token.get('line'))
+
+
+    # Atomic values
+    def parse_primary_expression(self):
+        """PrimaryExpression -> Literal | Variable
+        Literal token types: NUMBR, NUMBAR, YARN, TROOF, NOOB.
+        Variable: Identifier token type.
+        """
+
+        # check if token exists
+        if not self.current_token:
+            return None
+
+        atom = self.current_token
+        # Literals
+        if atom.get('type') in ('NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'NOOB', 'Number', 'String', 'Boolean'):
+            literal_token = atom
+            self.advance()
+            return LiteralNode(literal_token, line=literal_token.get('line'))
+
+        # Identifier
+        if atom.get('type') == 'Identifier':
+            identifier_token = atom
+            identifier_node = ParseTreeNode("Identifier", [], identifier_token, line=identifier_token.get('line'))
+            self.advance()
+            return VariableNode(identifier_node, line=identifier_node.get('line'))
+
+        return None
