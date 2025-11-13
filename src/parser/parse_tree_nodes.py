@@ -72,10 +72,12 @@ class PrintStatementNode(ParseTreeNode):
 
 class InputStatementNode(ParseTreeNode):
     #InputStatement → GIMMEH Identifier
-    def __init__(self, gimmeh_node, identifier_node, line=None):
-        super().__init__("InputStatement", [gimmeh_node, identifier_node], line=line)
+    def __init__(self, gimmeh_node, identifier_nodes, line=None):
+        # identifier_nodes: list of Identifier nodes (support multiple targets separated by AN)
+        children = [gimmeh_node] + (identifier_nodes if isinstance(identifier_nodes, list) else [identifier_nodes])
+        super().__init__("InputStatement", children, line=line)
         self.gimmeh_node = gimmeh_node
-        self.identifier_node = identifier_node
+        self.identifier_nodes = identifier_nodes if isinstance(identifier_nodes, list) else [identifier_nodes]
 
 
 # Expression nodes
@@ -112,3 +114,64 @@ class VariableNode(ParseTreeNode):
         super().__init__("Variable", [identifier_node], line=line)
         self.identifier_node = identifier_node
 
+
+# Comparison operation nodes
+class ComparisonNode(ParseTreeNode):
+    #ComparisonNode → BOTH SAEM | DIFFRINT
+    def __init__(self, operator, left_node, right_node, line=None):
+        operator_node = ParseTreeNode(operator, [], line=line)
+        super().__init__("Comparison", [operator_node, left_node, right_node], line=line)
+        self.operator = operator
+        self.left_node = left_node
+        self.right_node = right_node
+
+
+class BothSaemNode(ParseTreeNode):
+    #BOTH SAEM Expression AN Expression (equality check)
+    def __init__(self, left_node, right_node, line=None):
+        super().__init__("BothSaem", [left_node, right_node], line=line)
+        self.left_node = left_node
+        self.right_node = right_node
+
+
+class DiffrintNode(ParseTreeNode):
+    #DIFFRINT Expression AN Expression (inequality check)
+    def __init__(self, left_node, right_node, line=None):
+        super().__init__("Diffrint", [left_node, right_node], line=line)
+        self.left_node = left_node
+        self.right_node = right_node
+
+
+# Assignment operation nodes
+class AssignmentNode(ParseTreeNode):
+    #Assignment → Identifier R Expression
+    def __init__(self, identifier_node, expression_node, line=None):
+        super().__init__("Assignment", [identifier_node, expression_node], line=line)
+        self.identifier_node = identifier_node
+        self.expression_node = expression_node
+
+
+# Boolean operation nodes
+class BooleanExpressionNode(ParseTreeNode):
+    #Boolean operations: BOTH OF, EITHER OF, WON OF, NOT, ALL OF, ANY OF
+    def __init__(self, operator, operands=None, line=None):
+        operator_node = ParseTreeNode(operator, [], line=line)
+        children = [operator_node] + (operands or [])
+        super().__init__("BooleanExpression", children, line=line)
+        self.operator = operator
+        self.operands = operands or []
+
+
+class NotNode(ParseTreeNode):
+    #NOT Expression (logical negation)
+    def __init__(self, expression_node, line=None):
+        super().__init__("Not", [expression_node], line=line)
+        self.expression_node = expression_node
+
+
+class SmooshNode(ParseTreeNode):
+    # SMOOSH concatenation: SMOOSH <expr> AN <expr> AN ...
+    def __init__(self, operands=None, line=None):
+        children = operands or []
+        super().__init__("Smoosh", children, line=line)
+        self.operands = operands or []
