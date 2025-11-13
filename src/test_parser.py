@@ -1,9 +1,4 @@
-"""
-Simple parser smoke tests that iterate the sample `.lol` files in `tests/samples/`.
-This script tokenizes and parses each sample, prints a small summary and a compact
-parse-tree (using node __repr__). It also includes a few additional small
-inline checks for input (GIMMEH) forms and comparison nesting.
-"""
+
 
 import os
 import sys
