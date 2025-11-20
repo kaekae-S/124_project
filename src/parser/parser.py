@@ -39,28 +39,36 @@ class Parser:
                 self.pending_comment = self.current_token['value']
             self.advance() #move current token to next token in the list
         
-        # Parse HAI token if present
-        hai_node = None
-        if self.current_token and self.current_token['value'] == 'HAI':
-            hai_node = ParseTreeNode("HAI", [], self.current_token, line=self.current_token['line'])
-            self.advance()
+        # Parse HAI token (required)
+        if not self.current_token:
+            raise SyntaxError("Line 1: Expected 'HAI' at start of program")
+        if self.current_token['value'] != 'HAI':
+            raise SyntaxError(f"Line {self.current_token['line']}: Expected 'HAI' at start of program, but found '{self.current_token['value']}'")
+        hai_node = ParseTreeNode("HAI", [], self.current_token, line=self.current_token['line'])
+        self.advance()
         
         # Parse StatementList
         statements_node = self.parse_statement_list()
         
-        # Parse KTHXBYE token if present
-        kthxbye_node = None
-        if self.current_token and self.current_token['value'] == 'KTHXBYE':
-            kthxbye_node = ParseTreeNode("KTHXBYE", [], self.current_token, line=self.current_token['line'])
+        # Parse KTHXBYE token (required)
+        if not self.current_token:
+            raise SyntaxError("Unexpected end of input. Expected 'KTHXBYE' at end of program")
+        if self.current_token['value'] != 'KTHXBYE':
+            raise SyntaxError(f"Line {self.current_token['line']}: Expected 'KTHXBYE' at end of program, but found '{self.current_token['value']}'")
+        kthxbye_node = ParseTreeNode("KTHXBYE", [], self.current_token, line=self.current_token['line'])
+        self.advance()
+        
+        # Check for any remaining non-comment tokens after KTHXBYE
+        # Skip any trailing comments
+        while self.current_token and self.current_token['type'] == 'Comment':
             self.advance()
         
+        # If there are still tokens after KTHXBYE (and comments), that's an error
+        if self.current_token:
+            raise SyntaxError(f"Line {self.current_token['line']}: Unexpected token '{self.current_token['value']}' after 'KTHXBYE'. Program must end after 'KTHXBYE'")
+        
         # Build Program node with all children
-        program_children = []
-        if hai_node:
-            program_children.append(hai_node)
-        program_children.append(statements_node)
-        if kthxbye_node:
-            program_children.append(kthxbye_node)
+        program_children = [hai_node, statements_node, kthxbye_node]
         
         program = ParseTreeNode("Program", program_children, line=line)
         program.statements_node = statements_node
@@ -83,12 +91,13 @@ class Parser:
             # if current token is wazzup 
             if self.current_token and self.current_token['value'] == 'WAZZUP':
                 # Parse WAZZUP block
-                wazzup_node = ParseTreeNode("WAZZUP", [], self.current_token, line=self.current_token['line'])
+                wazzup_line = self.current_token['line']
+                wazzup_node = ParseTreeNode("WAZZUP", [], self.current_token, line=wazzup_line)
                 self.advance()
                 
                 # Parse statements in WAZZUP block
                 wazzup_statements = []
-                while self.current_token and self.current_token['value'] != 'BUHBYE':
+                while self.current_token and self.current_token['value'] != 'BUHBYE' and self.current_token['value'] != 'KTHXBYE':
                     if self.current_token['type'] == 'Comment':
                         if not self.current_token.get('inline', False):
                             self.pending_comment = self.current_token['value']
@@ -97,14 +106,24 @@ class Parser:
                     stmt = self.parse_statement() #parse statement and return a statement node or none if no tokens
                     if stmt:
                         wazzup_statements.append(stmt) #append statement node to WAZZZUP statemets
+                    else:
+                        # If we can't parse a statement and we're not at BUHBYE, that's an error
+                        if self.current_token and self.current_token['value'] != 'BUHBYE':
+                            raise SyntaxError(f"Line {self.current_token['line']}: Unexpected token '{self.current_token['value']}' in WAZZUP block. Expected statement or 'BUHBYE'")
                 
-                buhbye_node = None
-                if self.current_token and self.current_token['value'] == 'BUHBYE':
-                    buhbye_node = ParseTreeNode("BUHBYE", [], self.current_token, line=self.current_token['line'])
-                    self.advance()
+                # Check for required BUHBYE
+                if not self.current_token:
+                    raise SyntaxError(f"Line {wazzup_line}: Expected 'BUHBYE' to close 'WAZZUP' block, but reached end of input")
+                if self.current_token['value'] != 'BUHBYE':
+                    if self.current_token['value'] == 'KTHXBYE':
+                        raise SyntaxError(f"Line {self.current_token['line']}: Expected 'BUHBYE' to close 'WAZZUP' block, but found 'KTHXBYE'")
+                    raise SyntaxError(f"Line {self.current_token['line']}: Expected 'BUHBYE' to close 'WAZZUP' block, but found '{self.current_token['value']}'")
+                
+                buhbye_node = ParseTreeNode("BUHBYE", [], self.current_token, line=self.current_token['line'])
+                self.advance()
                 
                 # Create WAZZUP block node
-                wazzup_block = ParseTreeNode("WAZZUP_Block", [wazzup_node] + wazzup_statements + ([buhbye_node] if buhbye_node else []))
+                wazzup_block = ParseTreeNode("WAZZUP_Block", [wazzup_node] + wazzup_statements + [buhbye_node])
                 statements.append(wazzup_block)
             else:
                 stmt = self.parse_statement()
@@ -169,9 +188,8 @@ class Parser:
         elif self.current_token['value'] == 'GIMMEH':
             stmt = self.parse_input_statement()
         else:
-            # Unknown statement - skip it for now
-            self.advance()
-            return None
+            # Unknown statement - raise error instead of silently skipping
+            raise SyntaxError(f"Line {line}: Unexpected token '{self.current_token['value']}'. Expected statement (I HAS A, VISIBLE, GIMMEH, or assignment)")
         
         # Handle inline comments (add as child node if present)
         if self.current_token and self.current_token['type'] == 'Comment' and self.current_token.get('inline', False) and self.current_token['line'] == line:
@@ -205,9 +223,16 @@ class Parser:
         expression_node = None
         if self.current_token and self.current_token['value'] == 'ITZ':
             itz_token = self.current_token
+            itz_line = itz_token['line']
             self.advance()
-            itz_node = ParseTreeNode("ITZ", [], itz_token, line=itz_token['line'])
+            itz_node = ParseTreeNode("ITZ", [], itz_token, line=itz_line)
+            
+            # If ITZ is present, expression is required
+            if not self.current_token:
+                raise SyntaxError(f"Line {itz_line}: Expected expression after 'ITZ'")
             expression_node = self.parse_expression()
+            if not expression_node:
+                raise SyntaxError(f"Line {itz_line}: Expected expression after 'ITZ', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return VariableDeclarationNode(i_has_a_node, identifier_node, itz_node, expression_node, line=line)
     
@@ -218,7 +243,12 @@ class Parser:
         self.expect('VISIBLE')
         visible_node = ParseTreeNode("VISIBLE", [], visible_token, line=line)
         
+        # Parse expression - must be present
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'VISIBLE'")
         expression_node = self.parse_expression()
+        if not expression_node:
+            raise SyntaxError(f"Line {line}: Expected expression after 'VISIBLE', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return PrintStatementNode(visible_node, expression_node, line=line)
     
@@ -270,7 +300,11 @@ class Parser:
         if tok == 'NOT':
             # Unary NOT
             self.expect('NOT')
+            if not self.current_token:
+                raise SyntaxError(f"Line {line}: Expected expression after 'NOT'")
             expr = self.parse_expression()
+            if not expr:
+                raise SyntaxError(f"Line {line}: Expected expression after 'NOT', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
             return NotNode(expr, line=line)
 
         if tok in ('BOTH OF', 'EITHER OF', 'WON OF'):
@@ -279,14 +313,25 @@ class Parser:
             op_node = ParseTreeNode(op_token['value'].replace(' ', '_'), [], op_token, line=line)
 
             # parse first operand
+            if not self.current_token:
+                raise SyntaxError(f"Line {line}: Expected expression after '{tok}'")
             left = self.parse_expression()
+            if not left:
+                raise SyntaxError(f"Line {line}: Expected expression after '{tok}', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+            
             # require AN
             if not self.current_token or self.current_token['value'] != 'AN':
                 raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in {tok}")
             an_token = self.current_token
             self.advance()
             an_node = ParseTreeNode('AN', [], an_token, line=an_token['line'])
+            
+            # parse second operand
+            if not self.current_token:
+                raise SyntaxError(f"Line {line}: Expected expression after 'AN' in {tok}")
             right = self.parse_expression()
+            if not right:
+                raise SyntaxError(f"Line {line}: Expected expression after 'AN' in {tok}, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
 
             return BooleanExpressionNode(op_token['value'], [left, right], line=line)
 
@@ -295,12 +340,21 @@ class Parser:
             self.advance()
             operands = []
             # parse at least one operand
+            if not self.current_token:
+                raise SyntaxError(f"Line {line}: Expected expression after '{tok}'")
             first = self.parse_expression()
+            if not first:
+                raise SyntaxError(f"Line {line}: Expected expression after '{tok}', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
             operands.append(first)
+            
             # allow additional operands separated by AN
             while self.current_token and self.current_token['value'] == 'AN':
                 self.advance()  # consume AN
+                if not self.current_token:
+                    raise SyntaxError(f"Line {line}: Expected expression after 'AN' in {tok}")
                 nxt = self.parse_expression()
+                if not nxt:
+                    raise SyntaxError(f"Line {line}: Expected expression after 'AN' in {tok}, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
                 operands.append(nxt)
             return BooleanExpressionNode(op_token['value'], operands, line=line)
 
@@ -328,7 +382,11 @@ class Parser:
         both_saem_node = ParseTreeNode("BOTH_SAEM", [], both_saem_token, line=line)
         
         # Parse left expression (allow any expression so comparisons may nest)
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'BOTH SAEM'")
         left_expr = self.parse_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'BOTH SAEM', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         # Parse AN separator
         if not self.current_token or self.current_token['value'] != 'AN':
@@ -338,7 +396,11 @@ class Parser:
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
         # Parse right expression (allow any expression)
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in BOTH SAEM")
         right_expr = self.parse_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in BOTH SAEM, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(both_saem_node, left_expr, an_node, right_expr, line=line)
     
@@ -350,7 +412,11 @@ class Parser:
         diffrint_node = ParseTreeNode("DIFFRINT", [], diffrint_token, line=line)
         
         # Parse left expression (allow nested comparisons/boolean expressions)
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'DIFFRINT'")
         left_expr = self.parse_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'DIFFRINT', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         # Parse AN separator
         if not self.current_token or self.current_token['value'] != 'AN':
@@ -360,7 +426,11 @@ class Parser:
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
         # Parse right expression (allow nested expressions)
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in DIFFRINT")
         right_expr = self.parse_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in DIFFRINT, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(diffrint_node, left_expr, an_node, right_expr, line=line)
     
@@ -420,7 +490,11 @@ class Parser:
         self.expect('SUM OF')
         sum_node = ParseTreeNode("SUM_OF", [], sum_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'SUM OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'SUM OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in SUM OF")
@@ -428,7 +502,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in SUM OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in SUM OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(sum_node, left_expr, an_node, right_expr, line=line)
     
@@ -439,7 +517,11 @@ class Parser:
         self.expect('DIFF OF')
         diff_node = ParseTreeNode("DIFF_OF", [], diff_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'DIFF OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'DIFF OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in DIFF OF")
@@ -447,7 +529,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in DIFF OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in DIFF OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(diff_node, left_expr, an_node, right_expr, line=line)
     
@@ -458,7 +544,11 @@ class Parser:
         self.expect('PRODUKT OF')
         produkt_node = ParseTreeNode("PRODUKT_OF", [], produkt_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'PRODUKT OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'PRODUKT OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in PRODUKT OF")
@@ -466,7 +556,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in PRODUKT OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in PRODUKT OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(produkt_node, left_expr, an_node, right_expr, line=line)
     
@@ -477,7 +571,11 @@ class Parser:
         self.expect('QUOSHUNT OF')
         quoshunt_node = ParseTreeNode("QUOSHUNT_OF", [], quoshunt_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'QUOSHUNT OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'QUOSHUNT OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in QUOSHUNT OF")
@@ -485,7 +583,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in QUOSHUNT OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in QUOSHUNT OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(quoshunt_node, left_expr, an_node, right_expr, line=line)
     
@@ -496,7 +598,11 @@ class Parser:
         self.expect('MOD OF')
         mod_node = ParseTreeNode("MOD_OF", [], mod_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'MOD OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'MOD OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in MOD OF")
@@ -504,7 +610,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in MOD OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in MOD OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(mod_node, left_expr, an_node, right_expr, line=line)
     
@@ -515,7 +625,11 @@ class Parser:
         self.expect('BIGGR OF')
         biggr_node = ParseTreeNode("BIGGR_OF", [], biggr_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'BIGGR OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'BIGGR OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in BIGGR OF")
@@ -523,7 +637,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in BIGGR OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in BIGGR OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(biggr_node, left_expr, an_node, right_expr, line=line)
     
@@ -534,7 +652,11 @@ class Parser:
         self.expect('SMALLR OF')
         smallr_node = ParseTreeNode("SMALLR_OF", [], smallr_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'SMALLR OF'")
+        left_expr = self.parse_arithmetic_expression()
+        if not left_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'SMALLR OF', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in SMALLR OF")
@@ -542,7 +664,11 @@ class Parser:
         self.advance()
         an_node = ParseTreeNode("AN", [], an_token, line=an_token['line'])
         
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in SMALLR OF")
         right_expr = self.parse_arithmetic_expression()
+        if not right_expr:
+            raise SyntaxError(f"Line {line}: Expected expression after 'AN' in SMALLR OF, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return BinaryExpressionNode(smallr_node, left_expr, an_node, right_expr, line=line)
     
@@ -553,15 +679,29 @@ class Parser:
         
         # Handle string concatenation with +
         expr = self.parse_atomic_expression()
+        if not expr:
+            return None
         
         # Check for concatenation operator
-        while self.current_token and self.current_token['value'] == '+':
+        while self.current_token and (self.current_token['value'] == '+' or (self.current_token['type'] == 'Operator' and self.current_token['value'] == '+')):
             line = self.current_token['line']
             plus_token = self.current_token
             self.advance()
             plus_node = ParseTreeNode("CONCAT", [], plus_token, line=line)
             
-            right_expr = self.parse_atomic_expression()
+            if not self.current_token:
+                raise SyntaxError(f"Line {line}: Expected expression after '+' operator")
+            
+            # Try to parse right operand - catch errors to provide better message
+            try:
+                right_expr = self.parse_atomic_expression()
+                if not right_expr:
+                    raise SyntaxError(f"Line {line}: Expected expression after '+' operator, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+            except SyntaxError as e:
+                # If parse_atomic_expression raises an error, provide a clearer message
+                if 'Unexpected token' in str(e) and self.current_token:
+                    raise SyntaxError(f"Line {line}: Expected expression after '+' operator, but found '{self.current_token['value']}'")
+                raise
             expr = BinaryExpressionNode(plus_node, expr, None, right_expr, line=line)
         
         return expr
@@ -609,7 +749,11 @@ class Parser:
         self.advance()
         r_node = ParseTreeNode("R", [], r_token, line=r_token['line'])
         
-        # Parse expression
+        # Parse expression - must be present
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected expression after 'R' in assignment")
         expression_node = self.parse_expression()
+        if not expression_node:
+            raise SyntaxError(f"Line {line}: Expected expression after 'R' in assignment, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return AssignmentNode(identifier_node, expression_node, line=line)
