@@ -1,7 +1,3 @@
-"""
-Recursive Descent Parser for LOLCODE
-This parser consumes tokens from the Lexer and builds a Parse Tree
-"""
 
 from lexer.lexer import Lexer
 from parser.parse_tree_nodes import (
@@ -25,7 +21,7 @@ class Parser:
         self.pending_comment = None  # Track comment 
     
     def parse(self, code):
-        """Parse Program → HAI StatementList KTHXBYE. Entry point for recursive descent."""
+        #Main entry point: tokenize and parse the code into a parse tree
         self.tokens = self.lexer.tokenize(code)
         self.current_pos = 0
         self.current_token = self.tokens[0] if self.tokens else None
