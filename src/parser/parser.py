@@ -416,7 +416,7 @@ class Parser:
         self.expect('SUM OF')
         sum_node = ParseTreeNode("SUM_OF", [], sum_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in SUM OF")
@@ -435,7 +435,7 @@ class Parser:
         self.expect('DIFF OF')
         diff_node = ParseTreeNode("DIFF_OF", [], diff_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in DIFF OF")
@@ -454,7 +454,7 @@ class Parser:
         self.expect('PRODUKT OF')
         produkt_node = ParseTreeNode("PRODUKT_OF", [], produkt_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in PRODUKT OF")
@@ -473,7 +473,7 @@ class Parser:
         self.expect('QUOSHUNT OF')
         quoshunt_node = ParseTreeNode("QUOSHUNT_OF", [], quoshunt_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in QUOSHUNT OF")
@@ -492,7 +492,7 @@ class Parser:
         self.expect('MOD OF')
         mod_node = ParseTreeNode("MOD_OF", [], mod_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in MOD OF")
@@ -511,7 +511,7 @@ class Parser:
         self.expect('BIGGR OF')
         biggr_node = ParseTreeNode("BIGGR_OF", [], biggr_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in BIGGR OF")
@@ -530,7 +530,7 @@ class Parser:
         self.expect('SMALLR OF')
         smallr_node = ParseTreeNode("SMALLR_OF", [], smallr_token, line=line)
         
-        left_expr = self.parse_primary_expression()
+        left_expr = self.parse_arithmetic_expression()
         
         if not self.current_token or self.current_token['value'] != 'AN':
             raise SyntaxError(f"Line {line}: Expected 'AN' after first operand in SMALLR OF")
