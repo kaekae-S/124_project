@@ -175,3 +175,75 @@ class SmooshNode(ParseTreeNode):
         children = operands or []
         super().__init__("Smoosh", children, line=line)
         self.operands = operands or []
+
+
+class LoopNode(ParseTreeNode):
+    #Loop → IM IN YR label UPPIN YR var WILE condition | IM IN YR label NERFIN YR var TIL condition
+    #       statements
+    #       IM OUTTA YR label
+    def __init__(self, im_in_yr_node, label_node, direction_node, var_node, condition_node, body_statements, im_outta_yr_node, line=None):
+        children = [im_in_yr_node, label_node, direction_node, var_node, condition_node] + body_statements + [im_outta_yr_node]
+        super().__init__("Loop", children, line=line)
+        self.im_in_yr_node = im_in_yr_node
+        self.label_node = label_node
+        self.direction_node = direction_node  # UPPIN or NERFIN
+        self.var_node = var_node
+        self.condition_node = condition_node
+        self.body_statements = body_statements
+        self.im_outta_yr_node = im_outta_yr_node
+
+
+class ConditionalNode(ParseTreeNode):
+    #Conditional → Expression O RLY? YA RLY statements [MEBBE Expression statements]* [NO WAI statements] OIC
+    def __init__(self, condition_expr, ya_rly_statements, mebbe_blocks=None, no_wai_statements=None, line=None):
+        children = [condition_expr] + ya_rly_statements
+        if mebbe_blocks:
+            for mebbe_expr, mebbe_stmts in mebbe_blocks:
+                children.append(mebbe_expr)
+                children.extend(mebbe_stmts)
+        if no_wai_statements:
+            children.extend(no_wai_statements)
+        super().__init__("Conditional", children, line=line)
+        self.condition_expr = condition_expr
+        self.ya_rly_statements = ya_rly_statements
+        self.mebbe_blocks = mebbe_blocks or []  # List of (expression, statements) tuples
+        self.no_wai_statements = no_wai_statements or []
+
+
+class SwitchNode(ParseTreeNode):
+    #Switch → Expression WTF? [OMG Expression statements [GTFO]]* [OMGWTF statements] OIC
+    def __init__(self, switch_expr, omg_cases=None, omgwtf_statements=None, line=None):
+        children = [switch_expr]
+        if omg_cases:
+            for omg_expr, omg_stmts in omg_cases:
+                children.append(omg_expr)
+                children.extend(omg_stmts)
+        if omgwtf_statements:
+            children.extend(omgwtf_statements)
+        super().__init__("Switch", children, line=line)
+        self.switch_expr = switch_expr
+        self.omg_cases = omg_cases or []  # List of (expression, statements) tuples
+        self.omgwtf_statements = omgwtf_statements or []
+
+
+class FunctionNode(ParseTreeNode):
+    #Function → HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO
+    def __init__(self, function_name, parameters, body_statements, return_expr, line=None):
+        children = [function_name] + parameters
+        if body_statements:
+            children.extend(body_statements)
+        children.append(return_expr)
+        super().__init__("Function", children, line=line)
+        self.function_name = function_name
+        self.parameters = parameters
+        self.body_statements = body_statements or []
+        self.return_expr = return_expr
+
+
+class FunctionCallNode(ParseTreeNode):
+    #FunctionCall → I IZ identifier YR arg [AN YR arg]*
+    def __init__(self, function_name, arguments, line=None):
+        children = [function_name] + arguments
+        super().__init__("FunctionCall", children, line=line)
+        self.function_name = function_name
+        self.arguments = arguments

@@ -48,6 +48,9 @@ class Lexer:
             ("YARN", r'"[^"]*"'),           # strings: "hello", "3.14"
             ("NOOB", r"\bNOOB\b"),          # uninitialized / null-like literal
 
+            # Operators (must precede Identifiers)
+            ("Operator", r"\+"),            # string concatenation operator
+
             # Identifiers (variables, functions, loop labels)
             # Matches: [A-Za-z][A-Za-z0-9_]*
             ("Identifier", r"[A-Za-z][A-Za-z0-9_]*"),
