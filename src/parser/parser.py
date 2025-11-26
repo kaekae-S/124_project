@@ -9,7 +9,8 @@ from parser.parse_tree_nodes import (
     VariableDeclarationNode, PrintStatementNode, InputStatementNode,
     ExpressionNode, BinaryExpressionNode, PrimaryExpressionNode,
     LiteralNode, VariableNode, ComparisonNode, BothSaemNode, DiffrintNode,
-    AssignmentNode, BooleanExpressionNode, NotNode
+    AssignmentNode, BooleanExpressionNode, NotNode, LoopNode, ConditionalNode, SwitchNode,
+    FunctionNode, FunctionCallNode
 )
 
 
@@ -160,6 +161,123 @@ class Parser:
         self.advance()
         return value
     
+    def _could_start_conditional(self):
+        """Check if current token could start a conditional statement (expression followed by O RLY?)."""
+        if not self.current_token:
+            return False
+        
+        # Save current position
+        saved_pos = self.current_pos
+        
+        # Try to parse an expression
+        try:
+            # Temporarily parse expression to see if O RLY? follows
+            # Note: O RLY? is tokenized as "O" (Identifier) followed by "RLY" (Identifier)
+            expr = self.parse_expression()
+            if expr:
+                # Skip over any leftover AN tokens (from incomplete parsing)
+                while self.current_token and self.current_token['value'] == 'AN':
+                    # Check if next token after AN is O (start of O RLY?)
+                    next_after_an = self.peek(1)
+                    if next_after_an and next_after_an['type'] == 'Identifier' and next_after_an['value'] == 'O':
+                        # Check if RLY follows O
+                        rly_after_o = self.peek(2)
+                        if rly_after_o and rly_after_o['type'] == 'Identifier' and rly_after_o['value'] == 'RLY':
+                            # Found O RLY? after skipping AN
+                            self.current_pos = saved_pos
+                            if saved_pos < len(self.tokens):
+                                self.current_token = self.tokens[saved_pos]
+                            else:
+                                self.current_token = None
+                            return True
+                    # AN is not before O RLY?, advance past it
+                    self.advance()
+                
+                # Check for "O RLY?" pattern (O as identifier, RLY as identifier)
+                if self.current_token:
+                    if (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'O'):
+                        # Check if next token is RLY (could be on same line or next line)
+                        next_token = self.peek(1)
+                        if next_token and next_token['type'] == 'Identifier' and next_token['value'] == 'RLY':
+                            # Restore position - we'll parse it properly in parse_conditional_statement
+                            self.current_pos = saved_pos
+                            if saved_pos < len(self.tokens):
+                                self.current_token = self.tokens[saved_pos]
+                            else:
+                                self.current_token = None
+                            return True
+                    # Also check for "O RLY?" as a single keyword (if lexer is fixed)
+                    if self.current_token['value'] == 'O RLY?':
+                        # Restore position
+                        self.current_pos = saved_pos
+                        if saved_pos < len(self.tokens):
+                            self.current_token = self.tokens[saved_pos]
+                        else:
+                            self.current_token = None
+                        return True
+            # Restore position
+            self.current_pos = saved_pos
+            if saved_pos < len(self.tokens):
+                self.current_token = self.tokens[saved_pos]
+            else:
+                self.current_token = None
+            return False
+        except:
+            # If parsing fails, restore position and return False
+            self.current_pos = saved_pos
+            if saved_pos < len(self.tokens):
+                self.current_token = self.tokens[saved_pos]
+            else:
+                self.current_token = None
+            return False
+    
+    def _could_start_switch(self):
+        """Check if current token could start a switch statement (expression followed by WTF?)."""
+        if not self.current_token:
+            return False
+        
+        # Save current position
+        saved_pos = self.current_pos
+        
+        # Try to parse an expression
+        try:
+            # Note: WTF? is tokenized as "WTF" (Identifier)
+            expr = self.parse_expression()
+            if expr and self.current_token:
+                # Check for "WTF?" pattern (WTF as identifier)
+                if (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'WTF'):
+                    # Restore position - we'll parse it properly in parse_switch_statement
+                    self.current_pos = saved_pos
+                    if saved_pos < len(self.tokens):
+                        self.current_token = self.tokens[saved_pos]
+                    else:
+                        self.current_token = None
+                    return True
+                # Also check for "WTF?" as single keyword (if lexer is fixed)
+                if self.current_token['value'] == 'WTF?':
+                    # Restore position
+                    self.current_pos = saved_pos
+                    if saved_pos < len(self.tokens):
+                        self.current_token = self.tokens[saved_pos]
+                    else:
+                        self.current_token = None
+                    return True
+            # Restore position
+            self.current_pos = saved_pos
+            if saved_pos < len(self.tokens):
+                self.current_token = self.tokens[saved_pos]
+            else:
+                self.current_token = None
+            return False
+        except:
+            # If parsing fails, restore position and return False
+            self.current_pos = saved_pos
+            if saved_pos < len(self.tokens):
+                self.current_token = self.tokens[saved_pos]
+            else:
+                self.current_token = None
+            return False
+    
     def parse_statement(self):
         """Parse Statement → VariableDeclaration | PrintStatement | InputStatement | Assignment. Dispatch based on keyword."""
         if not self.current_token:
@@ -176,7 +294,7 @@ class Parser:
         line = self.current_token['line']
         
         # Check for assignment (Identifier R Expression)
-        if self.current_token['type'] == 'Identifier' and self.peek() and self.peek()['value'] == 'R':
+        if self.current_token['type'] == 'Identifier' and self.peek(1) and self.peek(1)['value'] == 'R':
             stmt = self.parse_assignment()
         # Variable declaration: I HAS A var [ITZ expr]
         elif self.current_token['value'] == 'I HAS A':
@@ -187,9 +305,25 @@ class Parser:
         # Input statement: GIMMEH var
         elif self.current_token['value'] == 'GIMMEH':
             stmt = self.parse_input_statement()
+        # Loop statement: IM IN YR label UPPIN/NERFIN YR var WILE/TIL condition
+        elif self.current_token['value'] == 'IM IN YR':
+            stmt = self.parse_loop_statement()
+        # Function declaration: HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO
+        elif self.current_token['value'] == 'HOW IZ I':
+            stmt = self.parse_function_declaration()
+        # Function call statement: I IZ identifier YR arg [AN YR arg]*
+        elif self.current_token['value'] == 'I IZ':
+            func_call = self.parse_function_call()
+            stmt = StatementNode("FunctionCallStatement", [func_call], line=line)
+        # Switch statement: Expression WTF? ...
+        elif self._could_start_switch():
+            stmt = self.parse_switch_statement()
+        # Conditional statement: Expression O RLY? ...
+        elif self._could_start_conditional():
+            stmt = self.parse_conditional_statement()
         else:
             # Unknown statement - raise error instead of silently skipping
-            raise SyntaxError(f"Line {line}: Unexpected token '{self.current_token['value']}'. Expected statement (I HAS A, VISIBLE, GIMMEH, or assignment)")
+            raise SyntaxError(f"Line {line}: Unexpected token '{self.current_token['value']}'. Expected statement (I HAS A, VISIBLE, GIMMEH, assignment, IM IN YR, HOW IZ I, I IZ, switch, or conditional)")
         
         # Handle inline comments (add as child node if present)
         if self.current_token and self.current_token['type'] == 'Comment' and self.current_token.get('inline', False) and self.current_token['line'] == line:
@@ -237,18 +371,57 @@ class Parser:
         return VariableDeclarationNode(i_has_a_node, identifier_node, itz_node, expression_node, line=line)
     
     def parse_print_statement(self):
-        """Parse PrintStatement → VISIBLE Expression. Output to console."""
+        """Parse PrintStatement → VISIBLE Expression [Expression]*. Output to console."""
         line = self.current_token['line']
         visible_token = self.current_token
         self.expect('VISIBLE')
         visible_node = ParseTreeNode("VISIBLE", [], visible_token, line=line)
         
-        # Parse expression - must be present
+        # Parse one or more expressions (VISIBLE can output multiple values)
+        expressions = []
+        
+        # Parse first expression - must be present
         if not self.current_token:
             raise SyntaxError(f"Line {line}: Expected expression after 'VISIBLE'")
-        expression_node = self.parse_expression()
-        if not expression_node:
+        
+        # Keep parsing expressions on the same line until we hit a new statement or end
+        while self.current_token and self.current_token['line'] == line:
+            # Stop if we hit a statement terminator
+            if self.current_token['value'] in ('KTHXBYE', 'BUHBYE'):
+                break
+            
+            # Check if next token starts a new statement (on same line, this shouldn't happen, but be safe)
+            if (self.current_token['value'] in ('I', 'VISIBLE', 'GIMMEH', 'WAZZUP') and 
+                self.current_token['line'] == line and len(expressions) > 0):
+                # This is a new statement on the same line (unusual but possible)
+                break
+            
+            # Try to parse an expression
+            expr = self.parse_expression()
+            if expr:
+                expressions.append(expr)
+            else:
+                # If parse_expression returns None, try parsing as atomic expression
+                # (for simple identifiers/literals that might not be recognized as full expressions)
+                if self.current_token and self.current_token['line'] == line:
+                    atomic = self.parse_atomic_expression()
+                    if atomic:
+                        expressions.append(atomic)
+                    else:
+                        # Can't parse as expression or atomic, stop
+                        break
+                else:
+                    break
+        
+        if not expressions:
             raise SyntaxError(f"Line {line}: Expected expression after 'VISIBLE', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+        
+        # If only one expression, use it directly; otherwise create a list node
+        if len(expressions) == 1:
+            expression_node = expressions[0]
+        else:
+            # Create a node to hold multiple expressions (they'll be concatenated in output)
+            expression_node = ParseTreeNode("VISIBLE_Expressions", expressions, line=line)
         
         return PrintStatementNode(visible_node, expression_node, line=line)
     
@@ -692,14 +865,16 @@ class Parser:
             if not self.current_token:
                 raise SyntaxError(f"Line {line}: Expected expression after '+' operator")
             
-            # Try to parse right operand - catch errors to provide better message
+            # Try to parse right operand - can be any expression (arithmetic, comparison, etc.)
+            # Use parse_arithmetic_expression() which will handle SUM OF, DIFF OF, etc.
+            # and fall through to parse_atomic_expression() for simple cases
             try:
-                right_expr = self.parse_atomic_expression()
+                right_expr = self.parse_arithmetic_expression()
                 if not right_expr:
                     raise SyntaxError(f"Line {line}: Expected expression after '+' operator, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
             except SyntaxError as e:
-                # If parse_atomic_expression raises an error, provide a clearer message
-                if 'Unexpected token' in str(e) and self.current_token:
+                # If parsing raises an error, provide a clearer message
+                if self.current_token:
                     raise SyntaxError(f"Line {line}: Expected expression after '+' operator, but found '{self.current_token['value']}'")
                 raise
             expr = BinaryExpressionNode(plus_node, expr, None, right_expr, line=line)
@@ -707,9 +882,20 @@ class Parser:
         return expr
     
     def parse_atomic_expression(self):
-        """Parse AtomicExpr → Literal | Identifier | (Expression). Terminal expressions."""
+        """Parse AtomicExpr → Literal | Identifier | FunctionCall | IT | (Expression). Terminal expressions."""
         if not self.current_token:
             return None
+        
+        # Function call: I IZ identifier YR arg [AN YR arg]*
+        if self.current_token['value'] == 'I IZ':
+            return self.parse_function_call()
+        
+        # IT keyword (refers to last function call result)
+        if self.current_token['value'] == 'IT':
+            it_token = self.current_token
+            self.advance()
+            it_node = ParseTreeNode("IT", [], it_token, line=it_token['line'])
+            return it_node
         
         # Literal: NUMBR, NUMBAR, YARN, TROOF, NOOB
         if self.current_token['type'] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'NOOB']:
@@ -728,6 +914,57 @@ class Parser:
         
         else:
             raise SyntaxError(f"Line {self.current_token['line']}: Unexpected token '{self.current_token['value']}' in expression")
+    
+    def parse_function_call(self):
+        """Parse FunctionCall → I IZ identifier YR arg [AN YR arg]*"""
+        line = self.current_token['line']
+        
+        # Parse "I IZ"
+        if self.current_token['value'] != 'I IZ':
+            raise SyntaxError(f"Line {line}: Expected 'I IZ' in function call")
+        i_iz_token = self.current_token
+        self.advance()
+        
+        # Parse function name (identifier)
+        if not self.current_token or self.current_token['type'] != 'Identifier':
+            raise SyntaxError(f"Line {line}: Expected function name (identifier) after 'I IZ'")
+        func_name_token = self.current_token
+        func_name_node = ParseTreeNode("FunctionName", [], func_name_token, line=func_name_token['line'])
+        self.advance()
+        
+        # Parse arguments: YR arg [AN YR arg]*
+        arguments = []
+        while self.current_token and self.current_token['value'] == 'YR':
+            yr_token = self.current_token
+            self.advance()
+            
+            if not self.current_token:
+                raise SyntaxError(f"Line {yr_token['line']}: Expected argument expression after 'YR'")
+            arg_expr = self.parse_expression()
+            if not arg_expr:
+                raise SyntaxError(f"Line {yr_token['line']}: Expected argument expression after 'YR', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+            arguments.append(arg_expr)
+            
+            # Check if there's another argument (AN YR ...)
+            # Only consume AN if the next token is YR (indicating another argument)
+            # Otherwise, leave AN for the outer parser (e.g., in SUM OF ... AN ...)
+            # But we need to be careful: if the current token after parsing the expression
+            # is not AN, or if AN is not followed by YR, we're done with this function call
+            if self.current_token and self.current_token['value'] == 'AN':
+                # Peek ahead to see if next is YR (indicating another argument)
+                next_token = self.peek(1)
+                if next_token and next_token['value'] == 'YR':
+                    self.advance()  # Consume AN, next iteration will check for YR
+                    # Continue loop to parse next argument
+                else:
+                    # Not another argument (AN is for outer expression), stop parsing function call
+                    # Don't consume AN, leave it for outer parser
+                    break
+            else:
+                # No AN token, we're done with function call
+                break
+        
+        return FunctionCallNode(func_name_node, arguments, line=line)
     
     def parse_assignment(self):
         """Parse Assignment → Identifier R Expression. Variable assignment."""
@@ -757,3 +994,366 @@ class Parser:
             raise SyntaxError(f"Line {line}: Expected expression after 'R' in assignment, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
         
         return AssignmentNode(identifier_node, expression_node, line=line)
+    
+    def parse_loop_statement(self):
+        """Parse Loop → IM IN YR label UPPIN YR var WILE condition | IM IN YR label NERFIN YR var TIL condition
+                       statements
+                       IM OUTTA YR label"""
+        line = self.current_token['line']
+        
+        # Parse "IM IN YR"
+        if self.current_token['value'] != 'IM IN YR':
+            raise SyntaxError(f"Line {line}: Expected 'IM IN YR' in loop statement")
+        im_in_yr_token = self.current_token
+        im_in_yr_node = ParseTreeNode("IM IN YR", [], im_in_yr_token, line=im_in_yr_token['line'])
+        self.advance()
+        
+        # Parse loop label (identifier)
+        if not self.current_token or self.current_token['type'] != 'Identifier':
+            raise SyntaxError(f"Line {line}: Expected loop label (identifier) after 'IM IN YR'")
+        label_token = self.current_token
+        label_node = ParseTreeNode("Label", [], label_token, line=label_token['line'])
+        loop_label = label_token['value']
+        self.advance()
+        
+        # Parse direction: UPPIN or NERFIN
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected 'UPPIN' or 'NERFIN' after loop label")
+        if self.current_token['value'] not in ('UPPIN', 'NERFIN'):
+            raise SyntaxError(f"Line {line}: Expected 'UPPIN' or 'NERFIN' after loop label, but found '{self.current_token['value']}'")
+        direction_token = self.current_token
+        direction_node = ParseTreeNode(direction_token['value'], [], direction_token, line=direction_token['line'])
+        is_uppin = direction_token['value'] == 'UPPIN'
+        self.advance()
+        
+        # Parse "YR"
+        if not self.current_token or self.current_token['value'] != 'YR':
+            raise SyntaxError(f"Line {line}: Expected 'YR' after '{direction_token['value']}'")
+        yr_token1 = self.current_token
+        self.advance()
+        
+        # Parse variable (identifier)
+        if not self.current_token or self.current_token['type'] != 'Identifier':
+            raise SyntaxError(f"Line {line}: Expected variable identifier after 'YR'")
+        var_token = self.current_token
+        var_node = ParseTreeNode("Variable", [], var_token, line=var_token['line'])
+        self.advance()
+        
+        # Parse condition keyword: WILE (for UPPIN) or TIL (for NERFIN)
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected 'WILE' or 'TIL' after loop variable")
+        if is_uppin:
+            if self.current_token['value'] != 'WILE':
+                raise SyntaxError(f"Line {line}: Expected 'WILE' after 'UPPIN YR', but found '{self.current_token['value']}'")
+        else:
+            if self.current_token['value'] != 'TIL':
+                raise SyntaxError(f"Line {line}: Expected 'TIL' after 'NERFIN YR', but found '{self.current_token['value']}'")
+        condition_keyword_token = self.current_token
+        self.advance()
+        
+        # Parse condition expression
+        if not self.current_token:
+            raise SyntaxError(f"Line {line}: Expected condition expression after '{condition_keyword_token['value']}'")
+        condition_node = self.parse_expression()
+        if not condition_node:
+            raise SyntaxError(f"Line {line}: Expected condition expression after '{condition_keyword_token['value']}', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+        
+        # Parse loop body (statements until IM OUTTA YR label)
+        body_statements = []
+        while self.current_token and self.current_token['value'] != 'IM OUTTA YR':
+            # Skip comment tokens
+            if self.current_token and self.current_token['type'] == 'Comment':
+                if not self.current_token.get('inline', False):
+                    self.pending_comment = self.current_token['value']
+                self.advance()
+                continue
+            
+            stmt = self.parse_statement()
+            if stmt:
+                body_statements.append(stmt)
+            else:
+                break
+        
+        # Parse "IM OUTTA YR"
+        if not self.current_token or self.current_token['value'] != 'IM OUTTA YR':
+            raise SyntaxError(f"Line {line}: Expected 'IM OUTTA YR' to close loop '{loop_label}'")
+        im_outta_yr_token = self.current_token
+        im_outta_yr_node = ParseTreeNode("IM OUTTA YR", [], im_outta_yr_token, line=im_outta_yr_token['line'])
+        self.advance()
+        
+        # Parse closing label (should match opening label)
+        if not self.current_token or self.current_token['type'] != 'Identifier':
+            raise SyntaxError(f"Line {im_outta_yr_token['line']}: Expected loop label after 'IM OUTTA YR'")
+        closing_label = self.current_token['value']
+        if closing_label != loop_label:
+            raise SyntaxError(f"Line {self.current_token['line']}: Loop label mismatch. Expected '{loop_label}' but found '{closing_label}'")
+        self.advance()
+        
+        return LoopNode(im_in_yr_node, label_node, direction_node, var_node, condition_node, body_statements, im_outta_yr_node, line=line)
+    
+    def parse_conditional_statement(self):
+        """Parse Conditional → Expression O RLY? YA RLY statements [MEBBE Expression statements]* [NO WAI statements] OIC"""
+        line = self.current_token['line']
+        
+        # Parse condition expression
+        condition_expr = self.parse_expression()
+        if not condition_expr:
+            raise SyntaxError(f"Line {line}: Expected expression before 'O RLY?'")
+        
+        # Parse "O RLY?" (tokenized as "O" Identifier followed by "RLY" Identifier)
+        if not self.current_token or not (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'O'):
+            # Also check for "O RLY?" as single keyword (if lexer is fixed)
+            if not self.current_token or self.current_token['value'] != 'O RLY?':
+                raise SyntaxError(f"Line {line}: Expected 'O RLY?' after condition expression")
+        o_token = self.current_token
+        self.advance()
+        # Parse "RLY" part
+        if not self.current_token or not (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'RLY'):
+            raise SyntaxError(f"Line {o_token['line']}: Expected 'RLY' after 'O' in 'O RLY?'")
+        rly_token = self.current_token
+        self.advance()
+        o_rly_token = {'type': 'Keyword', 'value': 'O RLY?', 'line': o_token['line']}  # Combined token for reference
+        
+        # Parse "YA RLY" block
+        if not self.current_token or self.current_token['value'] != 'YA RLY':
+            raise SyntaxError(f"Line {o_rly_token['line']}: Expected 'YA RLY' after 'O RLY?'")
+        ya_rly_token = self.current_token
+        self.advance()
+        
+        # Parse YA RLY statements
+        ya_rly_statements = []
+        while self.current_token and self.current_token['value'] not in ('MEBBE', 'NO WAI', 'OIC'):
+            # Skip comment tokens
+            if self.current_token and self.current_token['type'] == 'Comment':
+                if not self.current_token.get('inline', False):
+                    self.pending_comment = self.current_token['value']
+                self.advance()
+                continue
+            
+            stmt = self.parse_statement()
+            if stmt:
+                ya_rly_statements.append(stmt)
+            else:
+                break
+        
+        # Parse optional MEBBE blocks
+        mebbe_blocks = []
+        while self.current_token and self.current_token['value'] == 'MEBBE':
+            mebbe_token = self.current_token
+            self.advance()
+            
+            # Parse MEBBE condition expression
+            mebbe_expr = self.parse_expression()
+            if not mebbe_expr:
+                raise SyntaxError(f"Line {mebbe_token['line']}: Expected expression after 'MEBBE'")
+            
+            # Parse MEBBE statements
+            mebbe_statements = []
+            while self.current_token and self.current_token['value'] not in ('MEBBE', 'NO WAI', 'OIC'):
+                # Skip comment tokens
+                if self.current_token and self.current_token['type'] == 'Comment':
+                    if not self.current_token.get('inline', False):
+                        self.pending_comment = self.current_token['value']
+                    self.advance()
+                    continue
+                
+                stmt = self.parse_statement()
+                if stmt:
+                    mebbe_statements.append(stmt)
+                else:
+                    break
+            
+            mebbe_blocks.append((mebbe_expr, mebbe_statements))
+        
+        # Parse optional NO WAI block
+        no_wai_statements = None
+        if self.current_token and self.current_token['value'] == 'NO WAI':
+            no_wai_token = self.current_token
+            self.advance()
+            
+            no_wai_statements = []
+            while self.current_token and self.current_token['value'] != 'OIC':
+                # Skip comment tokens
+                if self.current_token and self.current_token['type'] == 'Comment':
+                    if not self.current_token.get('inline', False):
+                        self.pending_comment = self.current_token['value']
+                    self.advance()
+                    continue
+                
+                stmt = self.parse_statement()
+                if stmt:
+                    no_wai_statements.append(stmt)
+                else:
+                    break
+        
+        # Parse "OIC"
+        if not self.current_token or self.current_token['value'] != 'OIC':
+            raise SyntaxError(f"Line {line}: Expected 'OIC' to close conditional statement")
+        oic_token = self.current_token
+        self.advance()
+        
+        return ConditionalNode(condition_expr, ya_rly_statements, mebbe_blocks if mebbe_blocks else None, no_wai_statements, line=line)
+    
+    def parse_switch_statement(self):
+        """Parse Switch → Expression WTF? [OMG Expression statements [GTFO]]* [OMGWTF statements] OIC"""
+        line = self.current_token['line']
+        
+        # Parse switch expression
+        switch_expr = self.parse_expression()
+        if not switch_expr:
+            raise SyntaxError(f"Line {line}: Expected expression before 'WTF?'")
+        
+        # Parse "WTF?" (tokenized as "WTF" Identifier)
+        if not self.current_token or not (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'WTF'):
+            # Also check for "WTF?" as single keyword (if lexer is fixed)
+            if not self.current_token or self.current_token['value'] != 'WTF?':
+                raise SyntaxError(f"Line {line}: Expected 'WTF?' after switch expression")
+        wtf_token = self.current_token
+        self.advance()
+        
+        # Parse OMG cases
+        omg_cases = []
+        while self.current_token and self.current_token['value'] == 'OMG':
+            omg_token = self.current_token
+            self.advance()
+            
+            # Parse OMG case value expression
+            omg_expr = self.parse_expression()
+            if not omg_expr:
+                raise SyntaxError(f"Line {omg_token['line']}: Expected expression after 'OMG'")
+            
+            # Parse OMG case statements
+            omg_statements = []
+            has_gtfo = False
+            while self.current_token and self.current_token['value'] not in ('OMG', 'OMGWTF', 'OIC'):
+                # Skip comment tokens
+                if self.current_token and self.current_token['type'] == 'Comment':
+                    if not self.current_token.get('inline', False):
+                        self.pending_comment = self.current_token['value']
+                    self.advance()
+                    continue
+                
+                # Check for GTFO (break statement)
+                if self.current_token and self.current_token['value'] == 'GTFO':
+                    gtfo_token = self.current_token
+                    self.advance()
+                    has_gtfo = True
+                    break
+                
+                stmt = self.parse_statement()
+                if stmt:
+                    omg_statements.append(stmt)
+                else:
+                    break
+            
+            omg_cases.append((omg_expr, omg_statements))
+        
+        # Parse optional OMGWTF (default case)
+        omgwtf_statements = None
+        if self.current_token and self.current_token['value'] == 'OMGWTF':
+            omgwtf_token = self.current_token
+            self.advance()
+            
+            omgwtf_statements = []
+            while self.current_token and self.current_token['value'] != 'OIC':
+                # Skip comment tokens
+                if self.current_token and self.current_token['type'] == 'Comment':
+                    if not self.current_token.get('inline', False):
+                        self.pending_comment = self.current_token['value']
+                    self.advance()
+                    continue
+                
+                stmt = self.parse_statement()
+                if stmt:
+                    omgwtf_statements.append(stmt)
+                else:
+                    break
+        
+        # Parse "OIC"
+        if not self.current_token or self.current_token['value'] != 'OIC':
+            raise SyntaxError(f"Line {line}: Expected 'OIC' to close switch statement")
+        oic_token = self.current_token
+        self.advance()
+        
+        return SwitchNode(switch_expr, omg_cases if omg_cases else None, omgwtf_statements, line=line)
+    
+    def parse_function_declaration(self):
+        """Parse Function → HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO"""
+        line = self.current_token['line']
+        
+        # Parse "HOW IZ I"
+        if self.current_token['value'] != 'HOW IZ I':
+            raise SyntaxError(f"Line {line}: Expected 'HOW IZ I' in function declaration")
+        how_iz_i_token = self.current_token
+        self.advance()
+        
+        # Parse function name (identifier)
+        if not self.current_token or self.current_token['type'] != 'Identifier':
+            raise SyntaxError(f"Line {line}: Expected function name (identifier) after 'HOW IZ I'")
+        func_name_token = self.current_token
+        func_name_node = ParseTreeNode("FunctionName", [], func_name_token, line=func_name_token['line'])
+        self.advance()
+        
+        # Parse parameters: YR param [AN YR param]*
+        parameters = []
+        while self.current_token and self.current_token['value'] == 'YR':
+            yr_token = self.current_token
+            self.advance()
+            
+            if not self.current_token or self.current_token['type'] != 'Identifier':
+                raise SyntaxError(f"Line {yr_token['line']}: Expected parameter name (identifier) after 'YR'")
+            param_token = self.current_token
+            param_node = ParseTreeNode("Parameter", [], param_token, line=param_token['line'])
+            parameters.append(param_node)
+            self.advance()
+            
+            # Check if there's another parameter (AN YR ...)
+            if self.current_token and self.current_token['value'] == 'AN':
+                self.advance()  # Consume AN, next iteration will check for YR
+            else:
+                break
+        
+        # Parse optional function body statements (before FOUND YR)
+        body_statements = []
+        while self.current_token and self.current_token['value'] != 'FOUND YR':
+            # Skip comment tokens
+            if self.current_token and self.current_token['type'] == 'Comment':
+                if not self.current_token.get('inline', False):
+                    self.pending_comment = self.current_token['value']
+                self.advance()
+                continue
+            
+            # Check for GTFO (early return/break)
+            if self.current_token and self.current_token['value'] == 'GTFO':
+                gtfo_token = self.current_token
+                self.advance()
+                # GTFO in function means early return, we can represent it as a statement
+                continue
+            
+            stmt = self.parse_statement()
+            if stmt:
+                body_statements.append(stmt)
+            else:
+                break
+        
+        # Parse "FOUND YR"
+        if not self.current_token or self.current_token['value'] != 'FOUND YR':
+            raise SyntaxError(f"Line {line}: Expected 'FOUND YR' in function declaration")
+        found_yr_token = self.current_token
+        self.advance()
+        
+        # Parse return expression
+        if not self.current_token:
+            raise SyntaxError(f"Line {found_yr_token['line']}: Expected return expression after 'FOUND YR'")
+        return_expr = self.parse_expression()
+        if not return_expr:
+            raise SyntaxError(f"Line {found_yr_token['line']}: Expected return expression after 'FOUND YR', but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
+        
+        # Parse "IF U SAY SO"
+        if not self.current_token or self.current_token['value'] != 'IF U SAY SO':
+            found_token = self.current_token['value'] if self.current_token else 'end of input'
+            raise SyntaxError(f"Line {line}: Expected 'IF U SAY SO' to close function declaration, but found '{found_token}'")
+        if_u_say_so_token = self.current_token
+        self.advance()
+        
+        return FunctionNode(func_name_node, parameters, body_statements, return_expr, line=line)
