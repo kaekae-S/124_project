@@ -134,9 +134,21 @@ class Parser:
     def advance(self):
         """Move to next token in stream. Updates current_token and position."""
         self.current_pos += 1
-        if self.current_pos < len(self.tokens):
+        # Advance until we hit a non-comment token (skip comments centrally)
+        while self.current_pos < len(self.tokens):
+            tok = self.tokens[self.current_pos]
+            if tok and tok.get('type') == 'Comment':
+                # preserve non-inline comment text for pending_comment
+                if not tok.get('inline', False):
+                    self.pending_comment = tok.get('value')
+                # skip this comment token and advance
+                self.current_pos += 1
+                continue
+            # found a non-comment token
             self.current_token = self.tokens[self.current_pos]
+            break
         else:
+            # Reached end of token stream
             self.current_token = None
     
     def peek(self, offset=0):
@@ -161,71 +173,43 @@ class Parser:
         """Check if current token could start a conditional statement (expression followed by O RLY?)."""
         if not self.current_token:
             return False
-        
-        # Save current position
-        saved_pos = self.current_pos
-        
-        # Try to parse an expression
-        try:
-            # Temporarily parse expression to see if O RLY? follows
-            # Note: O RLY? is tokenized as "O" (Identifier) followed by "RLY" (Identifier)
-            expr = self.parse_expression()
-            if expr:
-                # Skip over any leftover AN tokens (from incomplete parsing)
-                while self.current_token and self.current_token['value'] == 'AN':
-                    # Check if next token after AN is O (start of O RLY?)
-                    next_after_an = self.peek(1)
-                    if next_after_an and next_after_an['type'] == 'Identifier' and next_after_an['value'] == 'O':
-                        # Check if RLY follows O
-                        rly_after_o = self.peek(2)
-                        if rly_after_o and rly_after_o['type'] == 'Identifier' and rly_after_o['value'] == 'RLY':
-                            # Found O RLY? after skipping AN
-                            self.current_pos = saved_pos
-                            if saved_pos < len(self.tokens):
-                                self.current_token = self.tokens[saved_pos]
-                            else:
-                                self.current_token = None
-                            return True
-                    # AN is not before O RLY?, advance past it
-                    self.advance()
-                
-                # Check for "O RLY?" pattern (O as identifier, RLY as identifier)
-                if self.current_token:
-                    if (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'O'):
-                        # Check if next token is RLY (could be on same line or next line)
-                        next_token = self.peek(1)
-                        if next_token and next_token['type'] == 'Identifier' and next_token['value'] == 'RLY':
-                            # Restore position - we'll parse it properly in parse_conditional_statement
-                            self.current_pos = saved_pos
-                            if saved_pos < len(self.tokens):
-                                self.current_token = self.tokens[saved_pos]
-                            else:
-                                self.current_token = None
-                            return True
-                    # Also check for "O RLY?" as a single keyword (if lexer is fixed)
-                    if self.current_token['value'] == 'O RLY?':
-                        # Restore position
-                        self.current_pos = saved_pos
-                        if saved_pos < len(self.tokens):
-                            self.current_token = self.tokens[saved_pos]
-                        else:
-                            self.current_token = None
-                        return True
-            # Restore position
-            self.current_pos = saved_pos
-            if saved_pos < len(self.tokens):
-                self.current_token = self.tokens[saved_pos]
-            else:
-                self.current_token = None
+
+        # Quick check: current token must be able to start an expression.
+        expr_start_values = {
+            'NOT', 'BOTH OF', 'EITHER OF', 'WON OF', 'ALL OF', 'ANY OF',
+            'BOTH SAEM', 'DIFFRINT', 'SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF',
+            'MOD OF', 'BIGGR OF', 'SMALLR OF', 'SMOOSH', 'I IZ', 'IT'
+        }
+
+        # If identifier followed by 'R' it's an assignment, not a conditional-start
+        if self.current_token['type'] == 'Identifier' and self.peek(1) and self.peek(1)['value'] == 'R':
             return False
-        except:
-            # If parsing fails, restore position and return False
-            self.current_pos = saved_pos
-            if saved_pos < len(self.tokens):
-                self.current_token = self.tokens[saved_pos]
-            else:
-                self.current_token = None
+
+        can_start = False
+        if self.current_token['type'] in ('NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'NOOB', 'Identifier'):
+            can_start = True
+        elif self.current_token['value'] in expr_start_values:
+            can_start = True
+
+        if not can_start:
             return False
+
+        # Non-destructive scan ahead for 'O RLY?' pattern (either combined token or 'O' followed by 'RLY')
+        lookahead_limit = 60
+        for offset in range(0, lookahead_limit):
+            t = self.peek(offset)
+            if not t:
+                break
+            # Combined token
+            if t['value'] == 'O RLY?':
+                return True
+            # Separate tokens: O then RLY — accept regardless of token 'type' (lexer may emit UnknownKeyword)
+            if t['value'] == 'O':
+                nxt = self.peek(offset + 1)
+                if nxt and nxt['value'] == 'RLY':
+                    return True
+
+        return False
     
     def _could_start_switch(self):
         """Check if current token could start a switch statement (expression followed by WTF?)."""
@@ -525,6 +509,11 @@ class Parser:
                 if not nxt:
                     raise SyntaxError(f"Line {line}: Expected expression after 'AN' in {tok}, but found '{self.current_token['value'] if self.current_token else 'end of input'}'")
                 operands.append(nxt)
+            # After collecting operands, expect MKAY to terminate the construct
+            if not self.current_token or self.current_token['value'] != 'MKAY':
+                raise SyntaxError(f"Line {line}: Expected 'MKAY' to terminate {tok}")
+            # consume MKAY
+            self.advance()
             return BooleanExpressionNode(op_token['value'], operands, line=line)
 
         return None

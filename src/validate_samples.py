@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from lexer.lexer import Lexer
 from parser.parser import Parser
+from parser.semantic import SemanticAnalyzer
 
 
 def print_header(title):
@@ -57,9 +58,9 @@ def validate_comment_handling():
     # Verify no "BTW" token in stream
     btw_tokens = [t for t in tokens_1 if t['value'] == 'BTW']
     if not btw_tokens:
-        print("✓ PASS: BTW comment correctly excluded from token stream")
+        print("[PASS] BTW comment correctly excluded from token stream")
     else:
-        print("✗ FAIL: BTW appeared in token stream")
+        print("[FAIL] BTW appeared in token stream")
     
     # Test 2: Multi-line comment (OBTW...TLDR)
     print_subheader("Test 2: Multi-line comment (OBTW...TLDR)")
@@ -80,9 +81,9 @@ def validate_comment_handling():
     # Verify no "OBTW" or "TLDR" tokens in stream
     comment_boundary_tokens = [t for t in tokens_2 if t['value'] in ('OBTW', 'TLDR')]
     if not comment_boundary_tokens:
-        print("✓ PASS: OBTW...TLDR correctly excluded from token stream")
+        print("[PASS] OBTW...TLDR correctly excluded from token stream")
     else:
-        print("✗ FAIL: OBTW/TLDR appeared in token stream")
+        print("[FAIL] OBTW/TLDR appeared in token stream")
     
     # Test 3: Verify no keyword/identifier confusion
     print_subheader("Test 3: Comments NOT confused with keywords/identifiers")
@@ -101,9 +102,9 @@ def validate_comment_handling():
     # Count tokens and verify structure
     btw_count = sum(1 for t in tokens_3 if t['value'] == 'BTW')
     if btw_count == 0:
-        print("✓ PASS: BTW comment line completely ignored")
+        print("[PASS] BTW comment line completely ignored")
     else:
-        print(f"✗ FAIL: Found {btw_count} BTW token(s) in stream")
+        print(f"[FAIL] Found {btw_count} BTW token(s) in stream")
     
     # Test 4: Mix of comments and code
     print_subheader("Test 4: Mix of single/multi-line comments with code")
@@ -126,9 +127,9 @@ def validate_comment_handling():
     
     comment_tokens = [t for t in tokens_4 if t['value'] in ('BTW', 'OBTW', 'TLDR')]
     if not comment_tokens:
-        print("✓ PASS: All comments correctly excluded")
+        print("[PASS] All comments correctly excluded")
     else:
-        print(f"✗ FAIL: Found {len(comment_tokens)} comment token(s) in stream")
+        print(f"[FAIL] Found {len(comment_tokens)} comment token(s) in stream")
 
 
 def validate_sample_files():
@@ -141,7 +142,7 @@ def validate_sample_files():
     sample_files = sorted(samples_dir.glob("*.lol"))
     
     if not sample_files:
-        print("✗ FAIL: No sample files found in src/tests/samples/")
+        print("[FAIL] No sample files found in src/tests/samples/")
         return
     
     print(f"Found {len(sample_files)} sample files\n")
@@ -164,19 +165,29 @@ def validate_sample_files():
             
             # Tokenize
             tokens = lexer.tokenize(code)
-            print(f"✓ Tokenization successful ({len(tokens)} tokens)")
+            print(f"[PASS] Tokenization successful ({len(tokens)} tokens)")
             
             # Parse
             parse_tree = parser.parse(code)
-            print(f"✓ Parsing successful")
+            print(f"[PASS] Parsing successful")
             print(f"  Parse tree root: {parse_tree.rule_name}")
             print(f"  Total children: {len(parse_tree.children)}")
-            
-            results[file_name] = {"status": "PASS", "tokens": len(tokens)}
-            passed += 1
+
+            # Run semantic analysis
+            analyzer = SemanticAnalyzer()
+            semantic_errors = analyzer.analyze(parse_tree)
+            if semantic_errors:
+                print(f"[FAIL] Semantic errors detected ({len(semantic_errors)})")
+                for e in semantic_errors:
+                    print(f"  - {e}")
+                results[file_name] = {"status": "FAIL", "errors": [str(e) for e in semantic_errors]}
+                failed += 1
+            else:
+                results[file_name] = {"status": "PASS", "tokens": len(tokens)}
+                passed += 1
             
         except Exception as e:
-            print(f"✗ FAIL: {type(e).__name__}: {str(e)}")
+            print(f"[FAIL] {type(e).__name__}: {str(e)}")
             results[file_name] = {"status": "FAIL", "error": str(e)}
             failed += 1
     
@@ -190,7 +201,16 @@ def validate_sample_files():
         print(f"\nFailed samples:")
         for name, result in results.items():
             if result["status"] == "FAIL":
-                print(f"  - {name}: {result['error']}")
+                # Some failures store a single 'error' string, others store 'errors' list
+                err = result.get('error')
+                errs = result.get('errors')
+                if err:
+                    print(f"  - {name}: {err}")
+                elif errs:
+                    # join multiple semantic errors into a single line for summary
+                    print(f"  - {name}: {errs[0] if len(errs)==1 else '; '.join(errs[:3]) + ('; ...' if len(errs)>3 else '')}")
+                else:
+                    print(f"  - {name}: Unknown error")
 
 
 def analyze_lexer_structure():

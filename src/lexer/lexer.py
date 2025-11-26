@@ -115,8 +115,26 @@ class Lexer:
             if in_multiline_comment:
                 continue
 
-            # Skip single-line comments (BTW ...)
-            # Any line starting with BTW is completely ignored
+            # Remove inline BTW comments (but ignore BTW inside string literals)
+            def _strip_inline_btw(s: str) -> str:
+                in_str = False
+                i = 0
+                while i < len(s):
+                    ch = s[i]
+                    if ch == '"':
+                        in_str = not in_str
+                        i += 1
+                        continue
+                    # detect BTW outside string
+                    if not in_str and s.startswith('BTW', i):
+                        return s[:i].rstrip()
+                    i += 1
+                return s
+
+            line = _strip_inline_btw(line)
+            if not line:
+                continue
+            # Skip single-line comment lines that begin with BTW
             if self.comment_single.match(line):
                 continue
 
@@ -130,8 +148,13 @@ class Lexer:
                     match = regex.match(line, pos)
                     if match:
                         value = match.group().strip()
+                        # If we matched an Identifier that is ALL CAPS and not a known keyword,
+                        # treat it as an UnknownKeyword so the parser can report a clearer error.
+                        t_type = token_type
+                        if token_type == 'Identifier' and value.isupper():
+                            t_type = 'UnknownKeyword'
                         tokens.append({
-                            "type": token_type,
+                            "type": t_type,
                             "value": value,
                             "line": line_num
                         })
