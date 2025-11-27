@@ -25,15 +25,17 @@ Scope Management:
 - Stack of scopes (global + nested blocks/functions)
 - Function tracking with arity (parameter count)
 - Loop depth counter for break statement validation
-"""
+""" 
+
 from typing import List, Dict, Any
 
 
 class SemanticAnalyzer:
     def __init__(self):
         self.errors: List[str] = []
-        # Stack of scopes; each scope is a dict of variable->True
-        self.scopes: List[Dict[str, bool]] = []
+        # Stack of scopes; each scope maps variable -> metadata dict
+        # metadata: { 'declared': bool, 'assigned': bool, 'type': Optional[str] }
+        self.scopes: List[Dict[str, Dict[str, Any]]] = []
         # Functions: name -> parameter_count
         self.functions: Dict[str, int] = {}
         # Track if we're inside a function
@@ -136,13 +138,37 @@ class SemanticAnalyzer:
         if name in cur:
             self._error(f"Duplicate declaration of variable '{name}'", line)
         else:
-            cur[name] = True
+            cur[name] = {'declared': True, 'assigned': False, 'type': None}
 
     def _is_declared(self, name: str) -> bool:
         for scope in reversed(self.scopes):
             if name in scope:
                 return True
         return False
+
+    def _is_assigned(self, name: str) -> bool:
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return bool(scope[name].get('assigned', False))
+        return False
+
+    def _mark_assigned(self, name: str):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                scope[name]['assigned'] = True
+                return
+
+    def _set_var_type(self, name: str, var_type: str):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                scope[name]['type'] = var_type
+                return
+
+    def _get_var_type(self, name: str):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name].get('type')
+        return None
 
     def _declare_function(self, name: str, arity: int, line: Any = None):
         if name in self.functions:
