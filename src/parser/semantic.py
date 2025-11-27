@@ -1,14 +1,30 @@
 """
-Basic semantic analyzer for the LOLCODE parser.
+Semantic Analyzer for LOLCODE
 
-Checks implemented:
-- Undefined variable usage
-- Duplicate variable declarations in the same scope
-- Function duplicate definitions and arity checks on calls
-- Scope handling for functions and nested blocks (basic nested scopes)
+Project: 124 - LOLCODE Compiler/Interpreter
 
-The analyzer exposes a `SemanticAnalyzer` class with `analyze(parse_tree)`
-which returns a list of human-readable error strings (empty if no errors).
+
+The semantic analyzer performs two passes over the parse tree:
+1. Collection Pass: Gathers all variable and function declarations
+2. Validation Pass: Checks for semantic errors
+
+Comprehensive Error Detection:
+- Undefined variables: Using variables before declaration
+- Duplicate declarations: Redeclaring same variable in same scope
+- Function errors: Undefined calls, arity mismatches, duplicate definitions
+- Control flow errors: GTFO (break) outside loops, FOUND YR (return) outside functions
+- Assignment errors: Assigning to undeclared variables
+- Input errors: Reading input into undeclared variables
+
+Design Pattern - Two-Pass Analysis:
+Reference: https://www.geeksforgeeks.org/compiler-design/single-pass-two-pass-and-multi-pass-compilers/
+Pass 1 ensures all symbols exist before validation checks in Pass 2, allowing
+forward references and handling WAZZUP blocks that declare globals from anywhere.
+
+Scope Management:
+- Stack of scopes (global + nested blocks/functions)
+- Function tracking with arity (parameter count)
+- Loop depth counter for break statement validation
 """
 from typing import List, Dict, Any
 
@@ -20,6 +36,10 @@ class SemanticAnalyzer:
         self.scopes: List[Dict[str, bool]] = []
         # Functions: name -> parameter_count
         self.functions: Dict[str, int] = {}
+        # Track if we're inside a function
+        self.in_function: bool = False
+        # Track if we're inside a loop
+        self.in_loop: int = 0  # depth counter for nested loops
 
     def analyze(self, program_node) -> List[str]:
         """Entry point. program_node is the root parse tree returned by Parser.parse()."""
@@ -175,6 +195,11 @@ class SemanticAnalyzer:
             self._visit_conditional(inner)
         elif name in ('Switch', 'SwitchNode'):
             self._visit_switch(inner)
+        elif name in ('Break', 'BreakNode', 'GTFO'):
+            # Check if break is inside a loop
+            line = getattr(inner, 'line', None)
+            if self.in_loop == 0:
+                self._error("'GTFO' (break) statement used outside of a loop", line)
         elif name == 'WAZZUP_Block':
             # WAZZUP...BUHBYE is just a grouping block in global scope, not a new scope.
             # Visit all statements inside it directly (don't create new scope).
@@ -193,13 +218,10 @@ class SemanticAnalyzer:
                     self._visit_node(c)
 
     def _visit_variable_declaration(self, node):
-        # node.identifier_node is a ParseTreeNode("Identifier", [], token)
-        ident = getattr(node, 'identifier_node', None)
-        name = self._get_identifier_name(ident)
-        line = getattr(ident, 'line', None) or (ident.token['line'] if getattr(ident, 'token', None) else None)
-        if name:
-            self._declare_var(name, line)
-
+        # Note: Variables were already declared in first pass (_collect_declarations)
+        # So we don't call _declare_var here again - that would cause duplicate errors!
+        # Just visit the initializer expression if present
+        
         # If there is an initializer expression, visit it
         expr = getattr(node, 'expression_node', None)
         if expr:
@@ -246,6 +268,9 @@ class SemanticAnalyzer:
 
         # Analyze function body in new scope
         self._enter_scope()
+        prev_in_function = self.in_function
+        self.in_function = True
+        
         # declare parameters in function scope
         for p in params:
             pname = self._get_identifier_name(p)
@@ -263,6 +288,7 @@ class SemanticAnalyzer:
             self._visit_node(ret)
 
         self._exit_scope()
+        self.in_function = prev_in_function
 
     def _visit_function_call(self, node):
         fn_node = getattr(node, 'function_name', None)
@@ -302,10 +328,12 @@ class SemanticAnalyzer:
             self._visit_node(cond)
 
         # Visit body statements in a new scope (loop block scope)
+        self.in_loop += 1
         self._enter_scope()
         for s in getattr(node, 'body_statements', []) or []:
             self._visit_statement_wrapper(s)
         self._exit_scope()
+        self.in_loop -= 1
 
     def _visit_conditional(self, node):
         # condition_expr, ya_rly_statements, mebbe_blocks, no_wai_statements
@@ -392,6 +420,17 @@ class SemanticAnalyzer:
         if cls_name in ('BooleanExpression', 'BooleanExpressionNode', 'Not'):
             for c in getattr(node, 'children', []) or []:
                 self._visit_node(c)
+            return
+
+        # ReturnExpression (FOUND YR)
+        if cls_name in ('ReturnExpression', 'ReturnExpressionNode', 'FoundYR'):
+            line = getattr(node, 'line', None)
+            if not self.in_function:
+                self._error("'FOUND YR' (return) statement used outside of a function", line)
+            # Visit the return expression value
+            expr = getattr(node, 'expression_node', None) or getattr(node, 'value_node', None)
+            if expr:
+                self._visit_node(expr)
             return
 
         # Comparison or others - traverse children generically

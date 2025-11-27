@@ -1,42 +1,42 @@
-"""
-LOLCODE Interpreter GUI
-A graphical user interface for the LOLCODE interpreter with code editor,
-lexer output, symbol table, and execution console.
-"""
+# LOL CODE Interpreter GUI
+# Provides a graphical interface to write, parse, and execute LOLCODE programs
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import sys
 import os
 
-# Add parent directory to path for imports
+# Add src directory to path so we can import lexer, parser, and semantic modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from lexer.lexer import Lexer
 from parser.parser import Parser
+from parser.semantic import SemanticAnalyzer
 
 
 class LOLCODEInterpreterGUI:
     def __init__(self, root):
+        """Initialize the GUI application with lexer, parser, and semantic analyzer."""
         self.root = root
         self.root.title("LOL CODE Interpreter")
         self.current_file = None
         
-        # Initialize lexer and parser
+        # Set up the three-stage compiler pipeline
         self.lexer = Lexer()
         self.parser = Parser(self.lexer)
+        self.semantic_analyzer = SemanticAnalyzer()
         
-        # Create GUI components
+        # Build all visual components
         self.create_widgets()
         
     def create_widgets(self):
-        """Create and layout all GUI components."""
+        """Build the complete layout with editor, tables, button, and console."""
         
-        # Main container
+        # Main container frame
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Configure grid weights
+        # Configure grid weights for responsive resizing
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
@@ -44,42 +44,39 @@ class LOLCODEInterpreterGUI:
         main_frame.rowconfigure(1, weight=1)
         main_frame.rowconfigure(2, weight=1)
         
-        # Title bar / Menu bar
+        # Top: Menu bar with file operations
         self.create_menu_bar(main_frame)
         
-        # Code Editor (Left side)
+        # Left: Code editor for writing LOLCODE
         self.create_code_editor(main_frame)
         
-        # Right side panels
+        # Right: Tables for analysis output
         right_frame = ttk.Frame(main_frame)
         right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(0, weight=1)
         right_frame.rowconfigure(1, weight=1)
         
-        # Lexemes Table
-        self.create_lexemes_table(right_frame)
+        self.create_lexemes_table(right_frame)    # Token list
+        self.create_symbol_table(right_frame)     # Variable list
         
-        # Symbol Table
-        self.create_symbol_table(right_frame)
-        
-        # Execute Button
+        # Execute button spanning both columns
         self.create_execute_button(main_frame)
         
-        # Output Console
+        # Bottom: Console for output and results
         self.create_output_console(main_frame)
         
     def create_menu_bar(self, parent):
-        """Create menu bar with file operations."""
+        """Create header with file name display and buttons for Open, Save, Save As, New."""
         menu_frame = ttk.Frame(parent)
         menu_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        # File label
+        # Left side: display current filename
         self.file_label = ttk.Label(menu_frame, text="(None) LOL CODE Interpreter", 
                                      font=("Arial", 12, "bold"))
         self.file_label.pack(side=tk.LEFT)
         
-        # Menu buttons
+        # Right side: file operation buttons
         button_frame = ttk.Frame(menu_frame)
         button_frame.pack(side=tk.RIGHT)
         
@@ -115,23 +112,23 @@ KTHXBYE"""
         self.code_editor.insert("1.0", default_code)
         
     def create_lexemes_table(self, parent):
-        """Create lexemes table."""
+        """Create table showing tokens (lexemes) and their types from lexer output."""
         lexemes_frame = ttk.LabelFrame(parent, text="Lexemes Table", padding="5")
         lexemes_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         lexemes_frame.columnconfigure(0, weight=1)
         lexemes_frame.rowconfigure(0, weight=1)
         
-        # Create treeview for table
+        # Create table with Lexeme and Classification columns
         columns = ("Lexeme", "Classification")
         self.lexemes_tree = ttk.Treeview(lexemes_frame, columns=columns, show="headings", height=10)
         
-        # Configure columns
+        # Set column headers and widths
         self.lexemes_tree.heading("Lexeme", text="Lexeme")
         self.lexemes_tree.heading("Classification", text="Classification")
         self.lexemes_tree.column("Lexeme", width=150, anchor=tk.W)
         self.lexemes_tree.column("Classification", width=200, anchor=tk.W)
         
-        # Scrollbar
+        # Add scrollbar to table
         lexemes_scroll = ttk.Scrollbar(lexemes_frame, orient=tk.VERTICAL, command=self.lexemes_tree.yview)
         self.lexemes_tree.configure(yscrollcommand=lexemes_scroll.set)
         
@@ -139,23 +136,23 @@ KTHXBYE"""
         lexemes_scroll.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
     def create_symbol_table(self, parent):
-        """Create symbol table."""
+        """Create table showing variables (identifiers) and their values during execution."""
         symbol_frame = ttk.LabelFrame(parent, text="Symbol Table", padding="5")
         symbol_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         symbol_frame.columnconfigure(0, weight=1)
         symbol_frame.rowconfigure(0, weight=1)
         
-        # Create treeview for table
+        # Create table with Identifier and Value columns
         columns = ("Identifier", "Value")
         self.symbol_tree = ttk.Treeview(symbol_frame, columns=columns, show="headings", height=10)
         
-        # Configure columns
+        # Set column headers and widths
         self.symbol_tree.heading("Identifier", text="Identifier")
         self.symbol_tree.heading("Value", text="Value")
         self.symbol_tree.column("Identifier", width=150, anchor=tk.W)
         self.symbol_tree.column("Value", width=200, anchor=tk.W)
         
-        # Scrollbar
+        # Add scrollbar to table
         symbol_scroll = ttk.Scrollbar(symbol_frame, orient=tk.VERTICAL, command=self.symbol_tree.yview)
         self.symbol_tree.configure(yscrollcommand=symbol_scroll.set)
         
@@ -194,13 +191,15 @@ KTHXBYE"""
         self.output_console.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
     def open_file(self):
-        """Open a LOLCODE file."""
+        """Open a .lol file and display its contents in the code editor."""
+        # Show file browser dialog
         filename = filedialog.askopenfilename(
             title="Open LOLCODE File",
             filetypes=[("LOLCODE files", "*.lol"), ("All files", "*.*")]
         )
         if filename:
             try:
+                # Read file and insert into editor
                 with open(filename, 'r', encoding='utf-8') as f:
                     content = f.read()
                 self.code_editor.delete("1.0", tk.END)
@@ -211,9 +210,10 @@ KTHXBYE"""
                 messagebox.showerror("Error", f"Failed to open file: {e}")
                 
     def save_file(self):
-        """Save current file."""
+        """Save the current file. If no file is open, prompt for new file name."""
         if self.current_file:
             try:
+                # Write editor content to file
                 content = self.code_editor.get("1.0", tk.END + "-1c")
                 with open(self.current_file, 'w', encoding='utf-8') as f:
                     f.write(content)
@@ -224,7 +224,8 @@ KTHXBYE"""
             self.save_file_as()
             
     def save_file_as(self):
-        """Save file with new name."""
+        """Save the editor content to a new file with user-chosen name."""
+        # Show save dialog
         filename = filedialog.asksaveasfilename(
             title="Save LOLCODE File",
             defaultextension=".lol",
@@ -232,6 +233,7 @@ KTHXBYE"""
         )
         if filename:
             try:
+                # Write editor content to new file
                 content = self.code_editor.get("1.0", tk.END + "-1c")
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(content)
@@ -242,27 +244,30 @@ KTHXBYE"""
                 messagebox.showerror("Error", f"Failed to save file: {e}")
                 
     def new_file(self):
-        """Create a new file."""
+        """Clear the editor and reset to create a new file."""
         self.code_editor.delete("1.0", tk.END)
         self.current_file = None
         self.file_label.config(text="(None) LOL CODE Interpreter")
         self.clear_tables()
         
     def clear_tables(self):
-        """Clear lexemes and symbol tables."""
+        """Remove all rows from lexemes table, symbol table, and clear output console."""
+        # Clear lexemes table
         for item in self.lexemes_tree.get_children():
             self.lexemes_tree.delete(item)
+        # Clear symbol table
         for item in self.symbol_tree.get_children():
             self.symbol_tree.delete(item)
+        # Clear output console
         self.output_console.config(state=tk.NORMAL)
         self.output_console.delete("1.0", tk.END)
         self.output_console.config(state=tk.DISABLED)
         
     def execute_code(self):
-        """Execute the LOLCODE program."""
+        """Run the LOLCODE: tokenize, parse, semantic check, and simulate execution."""
         code = self.code_editor.get("1.0", tk.END + "-1c")
         
-        # Clear previous results
+        # Clear previous results from all tables and console
         for item in self.lexemes_tree.get_children():
             self.lexemes_tree.delete(item)
         for item in self.symbol_tree.get_children():
@@ -271,40 +276,56 @@ KTHXBYE"""
         self.output_console.delete("1.0", tk.END)
         
         try:
-            # Tokenize
+            # Stage 1: Lexer - convert code string to tokens
             tokens = self.lexer.tokenize(code)
             
-            # Populate lexemes table
+            # Display tokens in lexemes table
             for token in tokens:
                 lexeme = token['value']
                 classification = self.get_token_classification(token['type'], lexeme)
                 self.lexemes_tree.insert("", tk.END, values=(lexeme, classification))
             
-            # Parse
+            # Stage 2: Parser - convert tokens to parse tree
             parse_tree = self.parser.parse(code)
             
-            # For now, we'll simulate execution by extracting variable declarations
-            # In a full implementation, you'd have an interpreter/evaluator
-            self.simulate_execution(code, tokens)
+            # Stage 3: Semantic Analyzer - check for logic/semantic errors
+            semantic_errors = self.semantic_analyzer.analyze(parse_tree)
             
-            self.output_console.insert(tk.END, "Program executed successfully!\n")
-            self.output_console.insert(tk.END, f"Parsed {len(tokens)} tokens.\n")
+            # If errors found, show them and stop execution
+            if semantic_errors:
+                self.output_console.insert(tk.END, "SEMANTIC ERRORS DETECTED:\n", "error")
+                for error in semantic_errors:
+                    self.output_console.insert(tk.END, f"  {error}\n", "error")
+                self.output_console.insert(tk.END, "\nProgram halted - please fix semantic errors.\n", "error")
+                messagebox.showerror("Semantic Error", 
+                                   "Semantic errors detected:\n\n" + "\n".join(semantic_errors))
+            else:
+                # No errors: simulate execution and show output
+                self.output_console.insert(tk.END, "=== PROGRAM OUTPUT ===\n")
+                self.simulate_execution(code, tokens)
+                self.output_console.insert(tk.END, "=== END OUTPUT ===\n\n")
+                self.output_console.insert(tk.END, "Program executed successfully!\n", "success")
+                self.output_console.insert(tk.END, f"Parsed {len(tokens)} tokens\n")
+                self.output_console.insert(tk.END, f"Semantic analysis: PASS\n", "success")
             
         except SyntaxError as e:
-            error_msg = f"Syntax Error: {str(e)}\n"
+            # Parser found syntax errors
+            error_msg = f"SYNTAX ERROR: {str(e)}\n"
             self.output_console.insert(tk.END, error_msg, "error")
             messagebox.showerror("Syntax Error", str(e))
         except Exception as e:
-            error_msg = f"Error: {str(e)}\n"
+            # Other unexpected errors
+            error_msg = f"ERROR: {str(e)}\n"
             self.output_console.insert(tk.END, error_msg, "error")
             messagebox.showerror("Error", str(e))
         finally:
+            # Always disable console and apply text colors
             self.output_console.config(state=tk.DISABLED)
-            # Configure error text color
             self.output_console.tag_config("error", foreground="red")
+            self.output_console.tag_config("success", foreground="green")
             
     def get_token_classification(self, token_type, value):
-        """Map token type to human-readable classification."""
+        """Convert token type to a descriptive label for display in lexemes table."""
         keyword_classifications = {
             'HAI': 'Code Delimiter',
             'KTHXBYE': 'Code Delimiter',
@@ -377,32 +398,32 @@ KTHXBYE"""
             return token_type
             
     def simulate_execution(self, code, tokens):
-        """Simulate program execution to populate symbol table."""
-        # Simple simulation: extract variable declarations and assignments
-        # This is a placeholder - a full interpreter would evaluate expressions
+        """Extract variables and handle VISIBLE output to populate symbol table and console."""
+        # Parse tokens to find variable declarations, assignments, and VISIBLE statements
+        # This is simplified - a full interpreter would evaluate all expressions
         
         variables = {}
         i = 0
         while i < len(tokens):
             token = tokens[i]
             
-            # Variable declaration: I HAS A var [ITZ value]
+            # Pattern 1: I HAS A var ITZ value  (declaration with initial value)
             if token['value'] == 'I HAS A' and i + 1 < len(tokens):
                 var_name = tokens[i + 1]['value'] if tokens[i + 1]['type'] == 'Identifier' else None
                 if var_name:
-                    # Check for ITZ
+                    # Check if ITZ follows (has initial value)
                     if i + 2 < len(tokens) and tokens[i + 2]['value'] == 'ITZ':
-                        # Get the value (simplified - just get next token)
+                        # Extract the value token
                         if i + 3 < len(tokens):
                             value_token = tokens[i + 3]
                             value = value_token['value']
                             variables[var_name] = value
                         else:
-                            variables[var_name] = 'NOOB'
+                            variables[var_name] = 'NOOB'  # No value given, default to NOOB
                     else:
-                        variables[var_name] = 'NOOB'
+                        variables[var_name] = 'NOOB'  # No ITZ, default value
             
-            # Assignment: var R value
+            # Pattern 2: var R value  (variable assignment)
             elif token['type'] == 'Identifier' and i + 1 < len(tokens) and tokens[i + 1]['value'] == 'R':
                 var_name = token['value']
                 if i + 2 < len(tokens):
@@ -410,43 +431,50 @@ KTHXBYE"""
                     value = value_token['value']
                     variables[var_name] = value
             
-            # VISIBLE output simulation
+            # Pattern 3: VISIBLE output  (print statement)
             elif token['value'] == 'VISIBLE':
-                # Collect output (simplified)
+                # Collect what to print (simplified parsing)
                 output_parts = []
                 j = i + 1
                 while j < len(tokens) and tokens[j]['value'] not in ('KTHXBYE', 'BUHBYE'):
-                    if tokens[j]['type'] in ('YARN', 'NUMBR', 'NUMBAR', 'TROOF'):
-                        output_parts.append(tokens[j]['value'].strip('"'))
-                    elif tokens[j]['type'] == 'Identifier' and tokens[j]['value'] in variables:
-                        output_parts.append(str(variables[tokens[j]['value']]))
-                    elif tokens[j]['value'] == 'KTHXBYE':
+                    token_type = tokens[j]['type']
+                    token_value = tokens[j]['value']
+                    
+                    # Add literal values to output
+                    if token_type in ('YARN', 'NUMBR', 'NUMBAR', 'TROOF'):
+                        output_parts.append(token_value.strip('"'))
+                    # Add variable values to output
+                    elif token_type == 'Identifier' and token_value in variables:
+                        output_parts.append(str(variables[token_value]))
+                    elif token_value == 'KTHXBYE':
                         break
                     j += 1
                 
+                # Print output to console
                 if output_parts:
                     output = ' '.join(output_parts)
                     self.output_console.insert(tk.END, output + "\n")
-                    # Set IT variable (implicit variable in LOLCODE)
-                    variables['IT'] = output
+                    variables['IT'] = output  # IT is implicit variable that stores last output
             
             i += 1
         
-        # Populate symbol table
+        # Display all variables in symbol table
         for identifier, value in variables.items():
             self.symbol_tree.insert("", tk.END, values=(identifier, str(value)))
 
 
 def main():
-    """Main entry point for the GUI application."""
+    """Start the LOL CODE GUI application window."""
+    # Create root window
     root = tk.Tk()
     root.geometry("1200x800")
     root.minsize(800, 600)
     
-    # Set style
+    # Apply theme
     style = ttk.Style()
     style.theme_use('clam')
     
+    # Create and run the GUI application
     app = LOLCODEInterpreterGUI(root)
     root.mainloop()
 

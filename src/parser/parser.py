@@ -1,3 +1,24 @@
+"""
+LOLCODE Parser - Recursive Descent Parser
+
+Purpose: Convert token stream into abstract syntax tree (AST)
+
+The parser implements a recursive descent parsing algorithm that:
+1. Validates grammar structure (HAI...KTHXBYE)
+2. Recognizes all LOLCODE language constructs (variables, functions, loops, conditionals)
+3. Builds a parse tree for semantic analysis
+4. Reports clear syntax errors with line numbers
+
+Key Design Patterns:
+- Each grammar rule has a dedicated parsing method (parse_statement, parse_expression, etc.)
+- Methods handle both required terminals and optional constructs
+- Error messages indicate expected vs. found tokens
+- Parse tree nodes are structured for semantic validation pass
+
+Reference: Recursive Descent Parsing is a top-down parsing technique where each
+grammar rule is implemented as a function that recognizes that rule.
+See: https://www.geeksforgeeks.org/compiler-design/recursive-descent-parser/
+"""
 
 from lexer.lexer import Lexer
 from parser.parse_tree_nodes import (
@@ -11,32 +32,46 @@ from parser.parse_tree_nodes import (
 
 
 class Parser:
-    """Recursive Descent Parser for LOLCODE."""
+    """Recursive Descent Parser for LOLCODE grammar."""
     
     def __init__(self, lexer):
-        """Initialize parser with lexer."""
+        """Initialize parser with lexer instance."""
         self.lexer = lexer
         self.tokens = []
         self.current_pos = 0
         self.current_token = None
-        self.pending_comment = None  # Track comment 
+        self.pending_comment = None  # Track pending comments for nodes
     
     def parse(self, code):
-        #Main entry point: tokenize and parse the code into a parse tree
+        """Parse LOLCODE source code into a parse tree.
+        
+        Entry point: Tokenizes code and builds the AST.
+        Grammar: Program → HAI StatementList KTHXBYE
+        
+        Args:
+            code (str): LOLCODE source code
+            
+        Returns:
+            ParseTreeNode: Root node of the program tree
+            
+        Raises:
+            SyntaxError: If code doesn't match LOLCODE grammar
+        """
+        # Tokenize the source code
         self.tokens = self.lexer.tokenize(code)
         self.current_pos = 0
         self.current_token = self.tokens[0] if self.tokens else None
         
-        # Parse the program: Program → HAI Statements KTHXBYE
+        # Parse the program structure: Program → HAI Statements KTHXBYE
         line = self.current_token['line'] if self.current_token else None
         
         # Skip leading comment tokens before checking for HAI
         while self.current_token and self.current_token['type'] == 'Comment':
             if not self.current_token.get('inline', False):
                 self.pending_comment = self.current_token['value']
-            self.advance() #move current token to next token in the list
+            self.advance()  # Move to next token
         
-        # Parse HAI token (required)
+        # Parse HAI token (required to start program)
         if not self.current_token:
             raise SyntaxError("Line 1: Expected 'HAI' at start of program")
         if self.current_token['value'] != 'HAI':
@@ -44,10 +79,10 @@ class Parser:
         hai_node = ParseTreeNode("HAI", [], self.current_token, line=self.current_token['line'])
         self.advance()
         
-        # Parse StatementList
+        # Parse statements between HAI and KTHXBYE
         statements_node = self.parse_statement_list()
         
-        # Parse KTHXBYE token (required)
+        # Parse KTHXBYE token (required to end program)
         if not self.current_token:
             raise SyntaxError("Unexpected end of input. Expected 'KTHXBYE' at end of program")
         if self.current_token['value'] != 'KTHXBYE':
@@ -55,29 +90,34 @@ class Parser:
         kthxbye_node = ParseTreeNode("KTHXBYE", [], self.current_token, line=self.current_token['line'])
         self.advance()
         
-        # Check for any remaining non-comment tokens after KTHXBYE
-        # Skip any trailing comments
+        # Check for any remaining tokens after KTHXBYE (skip trailing comments)
         while self.current_token and self.current_token['type'] == 'Comment':
             self.advance()
         
-        # If there are still tokens after KTHXBYE (and comments), that's an error
+        # Error if there are tokens after KTHXBYE
         if self.current_token:
             raise SyntaxError(f"Line {self.current_token['line']}: Unexpected token '{self.current_token['value']}' after 'KTHXBYE'. Program must end after 'KTHXBYE'")
         
-        # Build Program node with all children
+        # Build and return the Program node
         program_children = [hai_node, statements_node, kthxbye_node]
-        
         program = ParseTreeNode("Program", program_children, line=line)
         program.statements_node = statements_node
         return program
     
     def parse_statement_list(self):
-        """Parse StatementList → Statement* (KTHXBYE | BUHBYE). Recursive descent: collect statements."""
+        """Parse StatementList → Statement* (KTHXBYE | BUHBYE).
+        
+        Collects and parses all statements until reaching program/block end markers.
+        Handles WAZZUP (global variable blocks) and regular statements.
+        
+        Returns:
+            StatementListNode: Contains all parsed statements
+        """
         statements = []
         line = self.current_token['line'] if self.current_token else None
         
+        # Loop until we hit KTHXBYE (program end) or BUHBYE (block end)
         while self.current_token and self.current_token['value'] != 'KTHXBYE' and self.current_token['value'] != 'BUHBYE':
-            #loop while KTHXBYE
             # Skip comment tokens
             if self.current_token and self.current_token['type'] == 'Comment':
                 if not self.current_token.get('inline', False):
@@ -85,7 +125,7 @@ class Parser:
                 self.advance()
                 continue
             
-            # if current token is wazzup 
+            # Handle WAZZUP global variable declaration block
             if self.current_token and self.current_token['value'] == 'WAZZUP':
                 # Parse WAZZUP block
                 wazzup_line = self.current_token['line']

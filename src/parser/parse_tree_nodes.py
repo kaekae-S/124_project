@@ -1,54 +1,85 @@
 """
 Parse Tree Node Classes
+
+Purpose: AST node definitions for LOLCODE parse tree
+
+Each node class represents a grammar rule or language construct.
+Nodes form a tree structure where:
+- Leaf nodes contain tokens (language elements)
+- Internal nodes organize and connect child nodes
+- The tree is built by the Parser and analyzed by SemanticAnalyzer
+
 """
 
+
 class ParseTreeNode:
-    #Base class for all parse tree nodes
+    """Base class for all parse tree nodes.
+    
+    Represents a node in the AST with rule name, children, and optional token.
+    """
     def __init__(self, rule_name, children=None, token=None, line=None):
-        self.rule_name = rule_name 
+        """Initialize a parse tree node.
+        
+        Args:
+            rule_name (str): Grammar rule this node represents
+            children (list): Child nodes
+            token (dict): Token if this is a leaf node
+            line (int): Source line number
+        """
+        self.rule_name = rule_name
         self.children = children or []  # Child nodes
-        self.token = token  # Token 
-        self.line = line  # Line number
+        self.token = token  # Token for leaf nodes
+        self.line = line  # Line number for error reporting
     
     def __repr__(self):
+        """String representation for debugging."""
         if self.token:
-            # Leaf node show token
+            # Leaf node: show token info
             return f"{self.rule_name}({self.token['type']}: {self.token['value']})"
-        # Internal node show rule name and child count
+        # Internal node: show rule name and child count
         return f"{self.rule_name}({len(self.children)} children)"
     
     def add_child(self, child):
-        #Add a child node
+        """Add a child node to this node."""
         if child:
             self.children.append(child)
     
     def is_leaf(self):
-        #Check if this is a leaf node 
+        """Check if this is a leaf node (contains token)."""
         return self.token is not None
 
 
 class ProgramNode(ParseTreeNode):
-    #Root node: Program → HAI Statements KTHXBYE
+    """Root node of AST: Program → HAI Statements KTHXBYE.
+    
+    Represents the entire LOLCODE program.
+    """
     def __init__(self, statements_node, line=None):
-        super().__init__("Program", [statements_node], line=line)#call function to initiate and use line as default
+        super().__init__("Program", [statements_node], line=line)
         self.statements_node = statements_node
 
 
 class StatementListNode(ParseTreeNode):
-    #StatementList → Statement Statements | Statement | ε
+    """Collection of statements: StatementList → Statement*.
+    
+    Contains all statements in a program or block.
+    """
     def __init__(self, statements=None, line=None):
         super().__init__("StatementList", statements or [], line=line)
         self.statements = statements or []
 
 
-#Statement nodes
+# Statement nodes
 class StatementNode(ParseTreeNode):
-    #Statement → VariableDeclaration | PrintStatement | InputStatement | ...
+    """Base class for all statements: Statement → VariableDeclaration | etc."""
     pass
 
 
 class VariableDeclarationNode(ParseTreeNode):
-    #VariableDeclaration → I_HAS_A Identifier : ITZ Expression
+    """Variable declaration: I HAS A Identifier [ITZ Expression].
+    
+    Declares a new variable, optionally with initial value.
+    """
     def __init__(self, i_has_a_node, identifier_node, itz_node=None, expression_node=None, line=None):
         children = [i_has_a_node, identifier_node]
         if itz_node:

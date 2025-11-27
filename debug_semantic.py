@@ -1,3 +1,14 @@
+"""
+Debug Utility for Semantic Analysis
+
+Purpose: Debug and inspect parse tree structure and semantic analyzer behavior
+
+This script tests the semantic analyzer on sample LOLCODE files
+and prints debug information about the parse tree structure.
+
+Usage: python debug_semantic.py (from project root)
+"""
+
 import sys
 sys.path.insert(0, 'src')
 
@@ -5,11 +16,13 @@ from lexer.lexer import Lexer
 from parser.parser import Parser
 from parser.semantic import SemanticAnalyzer
 
+# Load and parse sample LOLCODE file
 code = open('src/tests/samples/02_gimmeh.lol').read()
-print("=== CODE ===")
+print("=== SOURCE CODE ===")
 print(code)
 print("\n=== PARSING ===")
 
+# Parse the code
 lexer = Lexer()
 parser = Parser(lexer)
 parse_tree = parser.parse(code)
@@ -27,7 +40,7 @@ if stmts:
             inner_rule = getattr(inner, 'rule_name', 'N/A')
             print(f"    -> Inner: {type(inner).__name__} rule={inner_rule}")
 
-print("\n=== WAZZUP STRUCTURE ===")
+print("\n=== WAZZUP BLOCK STRUCTURE ===")
 wazzup_stmt = getattr(stmts, 'statements', [])[0]
 print(f"WAZZUP statement: rule={getattr(wazzup_stmt, 'rule_name', 'N/A')}")
 if hasattr(wazzup_stmt, 'children'):
