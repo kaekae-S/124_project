@@ -1,9 +1,5 @@
-"""
-Parse Tree Node Classes
-"""
-
 class ParseTreeNode:
-    #Base class for all parse tree nodes
+    # Base class for all parse tree nodes
     def __init__(self, rule_name, children=None, token=None, line=None):
         self.rule_name = rule_name 
         self.children = children or []  # Child nodes
@@ -12,9 +8,9 @@ class ParseTreeNode:
     
     def __repr__(self):
         if self.token:
-            # Leaf node show token
+            # Leaf node shows token
             return f"{self.rule_name}({self.token['type']}: {self.token['value']})"
-        # Internal node show rule name and child count
+        # Internal node shows rule name and child count
         return f"{self.rule_name}({len(self.children)} children)"
     
     def add_child(self, child):
@@ -26,16 +22,13 @@ class ParseTreeNode:
         #Check if this is a leaf node 
         return self.token is not None
 
-
 class ProgramNode(ParseTreeNode):
-    #Root node: Program → HAI Statements KTHXBYE
     def __init__(self, statements_node, line=None):
         super().__init__("Program", [statements_node], line=line)#call function to initiate and use line as default
         self.statements_node = statements_node
 
 
 class StatementListNode(ParseTreeNode):
-    #StatementList → Statement Statements | Statement | ε
     def __init__(self, statements=None, line=None):
         super().__init__("StatementList", statements or [], line=line)
         self.statements = statements or []
@@ -43,12 +36,10 @@ class StatementListNode(ParseTreeNode):
 
 #Statement nodes
 class StatementNode(ParseTreeNode):
-    #Statement → VariableDeclaration | PrintStatement | InputStatement | ...
     pass
 
-
+# Variable declaration node
 class VariableDeclarationNode(ParseTreeNode):
-    #VariableDeclaration → I_HAS_A Identifier : ITZ Expression
     def __init__(self, i_has_a_node, identifier_node, itz_node=None, expression_node=None, line=None):
         children = [i_has_a_node, identifier_node]
         if itz_node:
@@ -63,7 +54,6 @@ class VariableDeclarationNode(ParseTreeNode):
 
 
 class PrintStatementNode(ParseTreeNode):
-    #PrintStatement → VISIBLE Expression
     def __init__(self, visible_node, expression_node, line=None):
         super().__init__("PrintStatement", [visible_node, expression_node], line=line)
         self.visible_node = visible_node
@@ -71,9 +61,8 @@ class PrintStatementNode(ParseTreeNode):
 
 
 class InputStatementNode(ParseTreeNode):
-    #InputStatement → GIMMEH Identifier
     def __init__(self, gimmeh_node, identifier_nodes, line=None):
-        # identifier_nodes: list of Identifier nodes (support multiple targets separated by AN)
+        # list of Identifier nodes
         children = [gimmeh_node] + (identifier_nodes if isinstance(identifier_nodes, list) else [identifier_nodes])
         super().__init__("InputStatement", children, line=line)
         self.gimmeh_node = gimmeh_node
@@ -82,12 +71,10 @@ class InputStatementNode(ParseTreeNode):
 
 # Expression nodes
 class ExpressionNode(ParseTreeNode):
-    #Expression → BinaryExpression | PrimaryExpression
     pass
 
 
 class BinaryExpressionNode(ParseTreeNode):
-    #BinaryExpression → Operator PrimaryExpression AN PrimaryExpression
     def __init__(self, operator_node, left_node, an_node, right_node, line=None):
         super().__init__("BinaryExpression", [operator_node, left_node, an_node, right_node], line=line)
         self.operator_node = operator_node
@@ -97,19 +84,17 @@ class BinaryExpressionNode(ParseTreeNode):
 
 
 class PrimaryExpressionNode(ParseTreeNode):
-    #PrimaryExpression → Literal | Variable | BinaryExpression
     pass
 
 
 class LiteralNode(ParseTreeNode):
-    #Literal → NUMBR | NUMBAR | YARN | TROOF | NOOB
+    #Literal: NUMBR | NUMBAR | YARN | TROOF | NOOB
     def __init__(self, literal_token, line=None):
         super().__init__("Literal", [], literal_token, line=line)
         self.literal_token = literal_token
 
 
 class VariableNode(ParseTreeNode):
-    #Variable → Identifier
     def __init__(self, identifier_node, line=None):
         super().__init__("Variable", [identifier_node], line=line)
         self.identifier_node = identifier_node
@@ -117,7 +102,7 @@ class VariableNode(ParseTreeNode):
 
 # Comparison operation nodes
 class ComparisonNode(ParseTreeNode):
-    #ComparisonNode → BOTH SAEM | DIFFRINT
+    #ComparisonNode: BOTH SAEM | DIFFRINT
     def __init__(self, operator, left_node, right_node, line=None):
         operator_node = ParseTreeNode(operator, [], line=line)
         super().__init__("Comparison", [operator_node, left_node, right_node], line=line)
@@ -127,7 +112,6 @@ class ComparisonNode(ParseTreeNode):
 
 
 class BothSaemNode(ParseTreeNode):
-    #BOTH SAEM Expression AN Expression (equality check)
     def __init__(self, left_node, right_node, line=None):
         super().__init__("BothSaem", [left_node, right_node], line=line)
         self.left_node = left_node
@@ -135,7 +119,6 @@ class BothSaemNode(ParseTreeNode):
 
 
 class DiffrintNode(ParseTreeNode):
-    #DIFFRINT Expression AN Expression (inequality check)
     def __init__(self, left_node, right_node, line=None):
         super().__init__("Diffrint", [left_node, right_node], line=line)
         self.left_node = left_node
@@ -144,7 +127,7 @@ class DiffrintNode(ParseTreeNode):
 
 # Assignment operation nodes
 class AssignmentNode(ParseTreeNode):
-    #Assignment → Identifier R Expression
+    #Assignment: Identifier R Expression
     def __init__(self, identifier_node, expression_node, line=None):
         super().__init__("Assignment", [identifier_node, expression_node], line=line)
         self.identifier_node = identifier_node
@@ -153,7 +136,7 @@ class AssignmentNode(ParseTreeNode):
 
 # Boolean operation nodes
 class BooleanExpressionNode(ParseTreeNode):
-    #Boolean operations: BOTH OF, EITHER OF, WON OF, NOT, ALL OF, ANY OF
+    #BooleanExpression: BOTH OF, EITHER OF, WON OF, NOT, ALL OF, ANY OF
     def __init__(self, operator, operands=None, line=None):
         operator_node = ParseTreeNode(operator, [], line=line)
         children = [operator_node] + (operands or [])
@@ -163,14 +146,14 @@ class BooleanExpressionNode(ParseTreeNode):
 
 
 class NotNode(ParseTreeNode):
-    #NOT Expression (logical negation)
+    #Not: NOT Expression
     def __init__(self, expression_node, line=None):
         super().__init__("Not", [expression_node], line=line)
         self.expression_node = expression_node
 
 
 class SmooshNode(ParseTreeNode):
-    # SMOOSH concatenation: SMOOSH <expr> AN <expr> AN ...
+    #Smoosh: SMOOSH <expr> AN <expr> AN 
     def __init__(self, operands=None, line=None):
         children = operands or []
         super().__init__("Smoosh", children, line=line)
@@ -178,9 +161,7 @@ class SmooshNode(ParseTreeNode):
 
 
 class LoopNode(ParseTreeNode):
-    #Loop → IM IN YR label UPPIN YR var WILE condition | IM IN YR label NERFIN YR var TIL condition
-    #       statements
-    #       IM OUTTA YR label
+    #loops
     def __init__(self, im_in_yr_node, label_node, direction_node, var_node, condition_node, body_statements, im_outta_yr_node, line=None):
         children = [im_in_yr_node, label_node, direction_node, var_node, condition_node] + body_statements + [im_outta_yr_node]
         super().__init__("Loop", children, line=line)
@@ -194,10 +175,10 @@ class LoopNode(ParseTreeNode):
 
 
 class ConditionalNode(ParseTreeNode):
-    #Conditional → Expression O RLY? YA RLY statements [MEBBE Expression statements]* [NO WAI statements] OIC
+    #Conditional
     def __init__(self, condition_expr, ya_rly_statements, mebbe_blocks=None, no_wai_statements=None, line=None):
         children = [condition_expr] + ya_rly_statements
-        if mebbe_blocks:
+        if mebbe_blocks: # List of expression, statements
             for mebbe_expr, mebbe_stmts in mebbe_blocks:
                 children.append(mebbe_expr)
                 children.extend(mebbe_stmts)
@@ -206,12 +187,12 @@ class ConditionalNode(ParseTreeNode):
         super().__init__("Conditional", children, line=line)
         self.condition_expr = condition_expr
         self.ya_rly_statements = ya_rly_statements
-        self.mebbe_blocks = mebbe_blocks or []  # List of (expression, statements) tuples
+        self.mebbe_blocks = mebbe_blocks or []  # List of expression, statements
         self.no_wai_statements = no_wai_statements or []
 
 
 class SwitchNode(ParseTreeNode):
-    #Switch → Expression WTF? [OMG Expression statements [GTFO]]* [OMGWTF statements] OIC
+    #Switch: Expressions
     def __init__(self, switch_expr, omg_cases=None, omgwtf_statements=None, line=None):
         children = [switch_expr]
         if omg_cases:
@@ -222,12 +203,12 @@ class SwitchNode(ParseTreeNode):
             children.extend(omgwtf_statements)
         super().__init__("Switch", children, line=line)
         self.switch_expr = switch_expr
-        self.omg_cases = omg_cases or []  # List of (expression, statements) tuples
+        self.omg_cases = omg_cases or []  # List of expression, statements
         self.omgwtf_statements = omgwtf_statements or []
 
 
 class FunctionNode(ParseTreeNode):
-    #Function → HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO
+    #Functions
     def __init__(self, function_name, parameters, body_statements, return_expr, line=None):
         children = [function_name] + parameters
         if body_statements:
@@ -241,9 +222,9 @@ class FunctionNode(ParseTreeNode):
 
 
 class FunctionCallNode(ParseTreeNode):
-    #FunctionCall → I IZ identifier YR arg [AN YR arg]*
+    #FunctionCall:
     def __init__(self, function_name, arguments, line=None):
-        children = [function_name] + arguments
+        children = [function_name] + arguments # List of arguments
         super().__init__("FunctionCall", children, line=line)
         self.function_name = function_name
         self.arguments = arguments

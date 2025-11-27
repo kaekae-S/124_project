@@ -15,10 +15,10 @@ from parser.parse_tree_nodes import (
 
 
 class Parser:
-    """Recursive Descent Parser for LOLCODE."""
+    #Recursive Descent Parser for LOLCODE.
     
     def __init__(self, lexer):
-        """Initialize parser with lexer."""
+        #Initialize parser with lexer.
         self.lexer = lexer
         self.tokens = []
         self.current_pos = 0
@@ -26,7 +26,7 @@ class Parser:
         self.pending_comment = None  # Track comment 
     
     def parse(self, code):
-        """Parse Program → HAI StatementList KTHXBYE. Entry point for recursive descent."""
+        # Parse Program: HAI StatementList KTHXBYE
         self.tokens = self.lexer.tokenize(code)
         self.current_pos = 0
         self.current_token = self.tokens[0] if self.tokens else None
@@ -76,8 +76,8 @@ class Parser:
         return program
     
     def parse_statement_list(self):
-        """Parse StatementList → Statement* (KTHXBYE | BUHBYE). Recursive descent: collect statements."""
-        statements = []
+        # Parse StatementList: Statement* (KTHXBYE | BUHBYE)
+        statements = [] # list of statements
         line = self.current_token['line'] if self.current_token else None
         
         while self.current_token and self.current_token['value'] != 'KTHXBYE' and self.current_token['value'] != 'BUHBYE':
@@ -136,7 +136,7 @@ class Parser:
         return StatementListNode(statements, line=line)
     
     def advance(self):
-        """Move to next token in stream. Updates current_token and position."""
+        # Move to next token in stream. Updates current_token and position.
         self.current_pos += 1
         if self.current_pos < len(self.tokens):
             self.current_token = self.tokens[self.current_pos]
@@ -144,14 +144,14 @@ class Parser:
             self.current_token = None
     
     def peek(self, offset=0):
-        """Lookahead: examine token at offset without consuming."""
+        # Lookahead
         pos = self.current_pos + offset
         if pos < len(self.tokens):
             return self.tokens[pos]
         return None
     
     def expect(self, expected_value, error_msg=None):
-        """Verify token matches expected value and advance. Error handling for parse errors."""
+        # Verify token matches expected value and advance
         if not self.current_token:
             raise SyntaxError(f"Unexpected end of input. Expected: {expected_value}")
         if self.current_token['value'] != expected_value:
@@ -162,7 +162,7 @@ class Parser:
         return value
     
     def _could_start_conditional(self):
-        """Check if current token could start a conditional statement (expression followed by O RLY?)."""
+        # Check if current token could start a conditional statement
         if not self.current_token:
             return False
         
@@ -172,12 +172,11 @@ class Parser:
         # Try to parse an expression
         try:
             # Temporarily parse expression to see if O RLY? follows
-            # Note: O RLY? is tokenized as "O" (Identifier) followed by "RLY" (Identifier)
             expr = self.parse_expression()
             if expr:
-                # Skip over any leftover AN tokens (from incomplete parsing)
+                # Skip over any leftover AN tokens
                 while self.current_token and self.current_token['value'] == 'AN':
-                    # Check if next token after AN is O (start of O RLY?)
+                    # Check if next token after AN is O
                     next_after_an = self.peek(1)
                     if next_after_an and next_after_an['type'] == 'Identifier' and next_after_an['value'] == 'O':
                         # Check if RLY follows O
@@ -193,20 +192,20 @@ class Parser:
                     # AN is not before O RLY?, advance past it
                     self.advance()
                 
-                # Check for "O RLY?" pattern (O as identifier, RLY as identifier)
+                # Check for "O RLY?" pattern
                 if self.current_token:
                     if (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'O'):
-                        # Check if next token is RLY (could be on same line or next line)
+                        # Check if next token is RLY
                         next_token = self.peek(1)
                         if next_token and next_token['type'] == 'Identifier' and next_token['value'] == 'RLY':
-                            # Restore position - we'll parse it properly in parse_conditional_statement
+                            # Restore position
                             self.current_pos = saved_pos
                             if saved_pos < len(self.tokens):
                                 self.current_token = self.tokens[saved_pos]
                             else:
                                 self.current_token = None
                             return True
-                    # Also check for "O RLY?" as a single keyword (if lexer is fixed)
+                    # Also check for "O RLY?" as a single keyword
                     if self.current_token['value'] == 'O RLY?':
                         # Restore position
                         self.current_pos = saved_pos
@@ -223,7 +222,7 @@ class Parser:
                 self.current_token = None
             return False
         except:
-            # If parsing fails, restore position and return False
+            # If parsing fails, restore position
             self.current_pos = saved_pos
             if saved_pos < len(self.tokens):
                 self.current_token = self.tokens[saved_pos]
@@ -232,7 +231,7 @@ class Parser:
             return False
     
     def _could_start_switch(self):
-        """Check if current token could start a switch statement (expression followed by WTF?)."""
+        # Check if current token could start a switch statement
         if not self.current_token:
             return False
         
@@ -241,19 +240,19 @@ class Parser:
         
         # Try to parse an expression
         try:
-            # Note: WTF? is tokenized as "WTF" (Identifier)
+            # WTF? is tokenized as "WTF"
             expr = self.parse_expression()
             if expr and self.current_token:
-                # Check for "WTF?" pattern (WTF as identifier)
+                # Check for "WTF?" pattern
                 if (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'WTF'):
-                    # Restore position - we'll parse it properly in parse_switch_statement
+                    # Restore position
                     self.current_pos = saved_pos
                     if saved_pos < len(self.tokens):
                         self.current_token = self.tokens[saved_pos]
                     else:
                         self.current_token = None
                     return True
-                # Also check for "WTF?" as single keyword (if lexer is fixed)
+                # Also check for "WTF?" as single keyword
                 if self.current_token['value'] == 'WTF?':
                     # Restore position
                     self.current_pos = saved_pos
@@ -270,7 +269,7 @@ class Parser:
                 self.current_token = None
             return False
         except:
-            # If parsing fails, restore position and return False
+            # If parsing fails, restore position
             self.current_pos = saved_pos
             if saved_pos < len(self.tokens):
                 self.current_token = self.tokens[saved_pos]
@@ -279,7 +278,7 @@ class Parser:
             return False
     
     def parse_statement(self):
-        """Parse Statement → VariableDeclaration | PrintStatement | InputStatement | Assignment. Dispatch based on keyword."""
+        # Parse Statement: VariableDeclaration | PrintStatement | InputStatement | Assignment
         if not self.current_token:
             return None
         
@@ -336,7 +335,7 @@ class Parser:
         return stmt_node
     
     def parse_variable_declaration(self):
-        """Parse VariableDeclaration → I HAS A Identifier [ITZ Expression]. Optional initialization."""
+        # Parse VariableDeclaration: I HAS A Identifier [ITZ Expression]
         line = self.current_token['line']
         
         # Parse "I HAS A" token
@@ -371,7 +370,7 @@ class Parser:
         return VariableDeclarationNode(i_has_a_node, identifier_node, itz_node, expression_node, line=line)
     
     def parse_print_statement(self):
-        """Parse PrintStatement → VISIBLE Expression [Expression]*. Output to console."""
+        # Parse PrintStatement: VISIBLE Expression [Expression]*
         line = self.current_token['line']
         visible_token = self.current_token
         self.expect('VISIBLE')
@@ -426,7 +425,7 @@ class Parser:
         return PrintStatementNode(visible_node, expression_node, line=line)
     
     def parse_input_statement(self):
-        """Parse InputStatement → GIMMEH Identifier [AN Identifier]*. Multi-target input support."""
+        # Parse InputStatement: GIMMEH Identifier [AN Identifier]*
         line = self.current_token['line']
         gimmeh_token = self.current_token
         self.expect('GIMMEH')
@@ -456,14 +455,14 @@ class Parser:
         return InputStatementNode(gimmeh_node, identifiers, line=line)
     
     def parse_expression(self):
-        """Parse Expression → BooleanExpr | ComparisonExpr | ArithmeticExpr. Operator precedence via recursion."""
+        # Parse Expression: BooleanExpr | ComparisonExpr | ArithmeticExpr
         expr = self.parse_boolean_expression()
         if expr:
             return expr
         return self.parse_comparison_expression()
 
     def parse_boolean_expression(self):
-        """Parse BooleanExpr → NOT expr | (BOTH|EITHER|WON) OF expr AN expr | (ALL|ANY) OF expr [AN expr]* MKAY."""
+        # Parse BooleanExpr: NOT expr | (BOTH|EITHER|WON) OF expr AN expr | (ALL|ANY) OF expr [AN expr]* MKAY
         if not self.current_token:
             return None
 
@@ -534,7 +533,7 @@ class Parser:
         return None
     
     def parse_comparison_expression(self):
-        """Parse ComparisonExpr → BOTH SAEM expr AN expr | DIFFRINT expr AN expr | ArithmeticExpr."""
+        # Parse ComparisonExpr: BOTH SAEM expr AN expr | DIFFRINT expr AN expr | ArithmeticExpr
         if not self.current_token:
             return None
         
@@ -548,7 +547,7 @@ class Parser:
             return self.parse_arithmetic_expression()
     
     def parse_both_saem(self):
-        """Parse BOTH SAEM expr AN expr. Equality comparison."""
+        # Parse BOTH SAEM expr AN expr
         line = self.current_token['line']
         both_saem_token = self.current_token
         self.expect('BOTH SAEM')
@@ -578,7 +577,7 @@ class Parser:
         return BinaryExpressionNode(both_saem_node, left_expr, an_node, right_expr, line=line)
     
     def parse_diffrint(self):
-        """Parse DIFFRINT expr AN expr. Inequality comparison."""
+        # Parse DIFFRINT expr AN expr
         line = self.current_token['line']
         diffrint_token = self.current_token
         self.expect('DIFFRINT')
@@ -608,7 +607,7 @@ class Parser:
         return BinaryExpressionNode(diffrint_node, left_expr, an_node, right_expr, line=line)
     
     def parse_arithmetic_expression(self):
-        """Parse ArithmeticExpr → (SUM|DIFF|PRODUKT|QUOSHUNT|MOD|BIGGR|SMALLR|SMOOSH) OF expr AN expr | PrimaryExpr."""
+        # Parse ArithmeticExpr: (SUM|DIFF|PRODUKT|QUOSHUNT|MOD|BIGGR|SMALLR|SMOOSH) OF expr AN expr | PrimaryExpr)
         if not self.current_token:
             return None
         
@@ -634,7 +633,7 @@ class Parser:
             return self.parse_primary_expression()
 
     def parse_smoosh(self):
-        """Parse SMOOSH expr AN expr [AN expr]*. String concatenation operator."""
+        # Parse SMOOSH expr AN expr [AN expr]*
         line = self.current_token['line']
         smoosh_token = self.current_token
         self.expect('SMOOSH')
@@ -657,7 +656,7 @@ class Parser:
         return ParseTreeNode('Smoosh', operands, smoosh_token, line=line)
     
     def parse_sum_of(self):
-        """Parse SUM OF expr AN expr. Addition."""
+        # Parse SUM OF expr AN expr
         line = self.current_token['line']
         sum_token = self.current_token
         self.expect('SUM OF')
@@ -684,7 +683,7 @@ class Parser:
         return BinaryExpressionNode(sum_node, left_expr, an_node, right_expr, line=line)
     
     def parse_diff_of(self):
-        """Parse DIFF OF expr AN expr. Subtraction."""
+        # Parse DIFF OF expr AN expr
         line = self.current_token['line']
         diff_token = self.current_token
         self.expect('DIFF OF')
@@ -711,7 +710,7 @@ class Parser:
         return BinaryExpressionNode(diff_node, left_expr, an_node, right_expr, line=line)
     
     def parse_produkt_of(self):
-        """Parse PRODUKT OF expr AN expr. Multiplication."""
+        # Parse PRODUKT OF expr AN expr
         line = self.current_token['line']
         produkt_token = self.current_token
         self.expect('PRODUKT OF')
@@ -738,7 +737,7 @@ class Parser:
         return BinaryExpressionNode(produkt_node, left_expr, an_node, right_expr, line=line)
     
     def parse_quoshunt_of(self):
-        """Parse QUOSHUNT OF expr AN expr. Division."""
+        # Parse QUOSHUNT OF expr AN expr
         line = self.current_token['line']
         quoshunt_token = self.current_token
         self.expect('QUOSHUNT OF')
@@ -765,7 +764,7 @@ class Parser:
         return BinaryExpressionNode(quoshunt_node, left_expr, an_node, right_expr, line=line)
     
     def parse_mod_of(self):
-        """Parse MOD OF expr AN expr. Modulo."""
+        # Parse MOD OF expr AN expr
         line = self.current_token['line']
         mod_token = self.current_token
         self.expect('MOD OF')
@@ -792,7 +791,7 @@ class Parser:
         return BinaryExpressionNode(mod_node, left_expr, an_node, right_expr, line=line)
     
     def parse_biggr_of(self):
-        """Parse BIGGR OF expr AN expr. Maximum value."""
+        # Parse BIGGR OF expr AN expr
         line = self.current_token['line']
         biggr_token = self.current_token
         self.expect('BIGGR OF')
@@ -819,7 +818,7 @@ class Parser:
         return BinaryExpressionNode(biggr_node, left_expr, an_node, right_expr, line=line)
     
     def parse_smallr_of(self):
-        """Parse SMALLR OF expr AN expr. Minimum value."""
+        # Parse SMALLR OF expr AN expr
         line = self.current_token['line']
         smallr_token = self.current_token
         self.expect('SMALLR OF')
@@ -846,7 +845,7 @@ class Parser:
         return BinaryExpressionNode(smallr_node, left_expr, an_node, right_expr, line=line)
     
     def parse_primary_expression(self):
-        """Parse PrimaryExpr → AtomicExpr [+ AtomicExpr]*. String concatenation with + operator."""
+        # Parse PrimaryExpr: AtomicExpr [+ AtomicExpr]*
         if not self.current_token:
             return None
         
@@ -882,7 +881,7 @@ class Parser:
         return expr
     
     def parse_atomic_expression(self):
-        """Parse AtomicExpr → Literal | Identifier | FunctionCall | IT | (Expression). Terminal expressions."""
+        # Parse AtomicExpr: Literal | Identifier | FunctionCall | IT | (Expression)
         if not self.current_token:
             return None
         
@@ -916,7 +915,7 @@ class Parser:
             raise SyntaxError(f"Line {self.current_token['line']}: Unexpected token '{self.current_token['value']}' in expression")
     
     def parse_function_call(self):
-        """Parse FunctionCall → I IZ identifier YR arg [AN YR arg]*"""
+        # Parse FunctionCall: I IZ identifier YR arg [AN YR arg]*
         line = self.current_token['line']
         
         # Parse "I IZ"
@@ -967,7 +966,7 @@ class Parser:
         return FunctionCallNode(func_name_node, arguments, line=line)
     
     def parse_assignment(self):
-        """Parse Assignment → Identifier R Expression. Variable assignment."""
+        # Parse Assignment: Identifier R Expression
         line = self.current_token['line']
         
         # Parse identifier
@@ -996,9 +995,7 @@ class Parser:
         return AssignmentNode(identifier_node, expression_node, line=line)
     
     def parse_loop_statement(self):
-        """Parse Loop → IM IN YR label UPPIN YR var WILE condition | IM IN YR label NERFIN YR var TIL condition
-                       statements
-                       IM OUTTA YR label"""
+        # Parse Loop: IM IN YR label UPPIN YR var WILE condition | IM IN YR label NERFIN YR var TIL condition statements IM OUTTA YR label
         line = self.current_token['line']
         
         # Parse "IM IN YR"
@@ -1092,7 +1089,7 @@ class Parser:
         return LoopNode(im_in_yr_node, label_node, direction_node, var_node, condition_node, body_statements, im_outta_yr_node, line=line)
     
     def parse_conditional_statement(self):
-        """Parse Conditional → Expression O RLY? YA RLY statements [MEBBE Expression statements]* [NO WAI statements] OIC"""
+        # Parse Conditional: Expression O RLY? YA RLY statements [MEBBE Expression statements]* [NO WAI statements] OIC
         line = self.current_token['line']
         
         # Parse condition expression
@@ -1195,7 +1192,7 @@ class Parser:
         return ConditionalNode(condition_expr, ya_rly_statements, mebbe_blocks if mebbe_blocks else None, no_wai_statements, line=line)
     
     def parse_switch_statement(self):
-        """Parse Switch → Expression WTF? [OMG Expression statements [GTFO]]* [OMGWTF statements] OIC"""
+        # Parse Switch: Expression WTF? [OMG Expression statements [GTFO]]* [OMGWTF statements] OIC
         line = self.current_token['line']
         
         # Parse switch expression
@@ -1278,7 +1275,7 @@ class Parser:
         return SwitchNode(switch_expr, omg_cases if omg_cases else None, omgwtf_statements, line=line)
     
     def parse_function_declaration(self):
-        """Parse Function → HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO"""
+        # Parse Function: HOW IZ I identifier YR param [AN YR param]* [statements] FOUND YR expression IF U SAY SO
         line = self.current_token['line']
         
         # Parse "HOW IZ I"
