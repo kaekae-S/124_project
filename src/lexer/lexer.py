@@ -33,13 +33,15 @@ class Lexer:
             # CRITICAL: These must appear FIRST to take precedence over single-word keywords
             ("Keyword", r"\b(I HAS A|SUM OF|DIFF OF|PRODUKT OF|QUOSHUNT OF|MOD OF|BIGGR OF|SMALLR OF|"
                         r"BOTH SAEM|DIFFRINT|BOTH OF|EITHER OF|WON OF|ALL OF|ANY OF|IM IN YR|"
-                        r"IM OUTTA YR|HOW IZ I|FOUND YR|IS NOW A|IF U SAY SO)\b"),
+                        r"IM OUTTA YR|HOW IZ I|FOUND YR|IS NOW A|IF U SAY SO)\b|"
+                        r"O RLY\?"),
 
             # Single-word keywords
             # Includes all LOLCODE language keywords
             ("Keyword", r"\b(HAI|KTHXBYE|WAZZUP|BUHBYE|BTW|OBTW|TLDR|ITZ|R|VISIBLE|GIMMEH|"
-                        r"O RLY\?|YA RLY|MEBBE|NO WAI|OIC|WTF\?|OMG|OMGWTF|"
-                        r"UPPIN|NERFIN|YR|TIL|WILE|GTFO|I IZ|MKAY|AN|A|MAEK|SMOOSH)\b"),
+                        r"YA RLY|MEBBE|NO WAI|OIC|OMG|OMGWTF|"
+                        r"UPPIN|NERFIN|YR|TIL|WILE|GTFO|I IZ|MKAY|AN|A|MAEK|SMOOSH)\b|"
+                        r"WTF\?"),
 
             # Literals (must precede Identifiers to match before generic identifier pattern)
             ("NUMBAR", r"-?\d+\.\d+"),      # floating-point numbers: 3.14, -2.5

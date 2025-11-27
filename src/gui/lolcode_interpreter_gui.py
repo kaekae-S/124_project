@@ -376,6 +376,8 @@ KTHXBYE"""
             'MKAY': 'Keyword',
             'A': 'Keyword',
             'IT': 'Special Variable',
+            'O': 'Unknown Keyword',
+            'RLY': 'Unknown Keyword',
         }
         
         type_classifications = {

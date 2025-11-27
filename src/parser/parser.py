@@ -243,12 +243,6 @@ class Parser:
             # Combined token
             if t['value'] == 'O RLY?':
                 return True
-            # Separate tokens: O then RLY — accept regardless of token 'type' (lexer may emit UnknownKeyword)
-            if t['value'] == 'O':
-                nxt = self.peek(offset + 1)
-                if nxt and nxt['value'] == 'RLY':
-                    return True
-
         return False
     
     def _could_start_switch(self):
@@ -337,6 +331,7 @@ class Parser:
             stmt = StatementNode("FunctionCallStatement", [func_call], line=line)
         # Switch statement: Expression WTF? ...
         elif self._could_start_switch():
+            print("Check switch")
             stmt = self.parse_switch_statement()
         # Conditional statement: Expression O RLY? ...
         elif self._could_start_conditional():
@@ -1126,18 +1121,12 @@ class Parser:
             raise SyntaxError(f"Line {line}: Expected expression before 'O RLY?'")
         
         # Parse "O RLY?" (tokenized as "O" Identifier followed by "RLY" Identifier)
-        if not self.current_token or not (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'O'):
+        if not self.current_token or self.current_token['value'] != 'O RLY?':
             # Also check for "O RLY?" as single keyword (if lexer is fixed)
             if not self.current_token or self.current_token['value'] != 'O RLY?':
                 raise SyntaxError(f"Line {line}: Expected 'O RLY?' after condition expression")
-        o_token = self.current_token
+        o_rly_token = self.current_token
         self.advance()
-        # Parse "RLY" part
-        if not self.current_token or not (self.current_token['type'] == 'Identifier' and self.current_token['value'] == 'RLY'):
-            raise SyntaxError(f"Line {o_token['line']}: Expected 'RLY' after 'O' in 'O RLY?'")
-        rly_token = self.current_token
-        self.advance()
-        o_rly_token = {'type': 'Keyword', 'value': 'O RLY?', 'line': o_token['line']}  # Combined token for reference
         
         # Parse "YA RLY" block
         if not self.current_token or self.current_token['value'] != 'YA RLY':
