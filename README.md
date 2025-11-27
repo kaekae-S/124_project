@@ -84,131 +84,101 @@ The GUI provides:
 - **Lexemes Table**: View tokenized output
 - **Symbol Table**: View variable values during execution
 - **Output Console**: See program output and errors
-- **File Operations**: Open, save, and create new files
+# LOLCODE Interpreter (124_project)
 
-### Command Line
+Simple README summarizing the core components (lexer, parser, semantic analyzer)
+and instructions for running the GUI.
 
-Run LOLCODE files from the command line:
+Project info
+- Project: 124 - LOLCODE Compiler/Interpreter
+- Author: Aaron
 
-```bash
-python src/main.py <input_file.lol>
+Overview
+--------
+This repository implements a small LOLCODE toolchain and a Tkinter GUI.
+It is organized as a three-stage pipeline:
+
+- Lexer: tokenizes source code into tokens (keywords, identifiers, literals).
+- Parser: recursive descent parser that produces an AST (parse tree).
+- Semantic Analyzer: multi-pass validator that checks scoping, undefined variables,
+  function arity, control-flow rules (e.g., break/return placement), and other
+  semantic constraints.
+
+Files of interest
+-----------------
+- `src/lexer/lexer.py` — Lexer implementation (token patterns, comment handling).
+- `src/parser/parser.py` — Recursive descent parser, builds parse tree nodes.
+- `src/parser/parse_tree_nodes.py` — AST node classes used by the parser.
+- `src/parser/semantic.py` — Semantic analyzer (declaration collection + validation).
+- `src/gui/lolcode_interpreter_gui.py` — Tkinter-based GUI (editor, tables, console).
+- `run_gui.py` — Small launcher script that starts the GUI.
+
+How the components interact
+---------------------------
+1. The GUI or a CLI script reads the source file.
+2. The Lexer converts source text → token list.
+3. The Parser converts tokens → parse tree (AST). Syntax errors raised here.
+4. The Semantic Analyzer inspects the AST and returns human-readable errors.
+5. If no semantic errors, the GUI runs a simplified simulation that demonstrates
+   variable bindings and `VISIBLE` output (full interpreter is partial).
+
+Running the GUI (desktop)
+-------------------------
+Requirements:
+- Python 3.7+ (Windows: ensure `tkinter` is installed; most Python distributions include it)
+
+Start the GUI from project root:
+
+```powershell
+python run_gui.py
 ```
 
-## Test Files
+What the GUI shows:
+- Code editor: write or open `.lol` files
+- Lexemes table: lexer token output
+- Symbol table: variables and their last values (simulation)
+- Output console: program output and semantic/syntax errors
 
-The project includes comprehensive test samples in `src/tests/samples/`:
+Using the GUI:
+1. Write or open a `.lol` file using the Open/Save buttons.
+2. Click `EXECUTE` to run the three-stage pipeline (lexer → parser → semantic).
+3. If semantic errors are found they appear in the output console and in a dialog.
+4. Otherwise the GUI displays `=== PROGRAM OUTPUT ===` and the simulated output.
 
-- `01_variables.lol` - Variable declarations and basic operations
-- `02_gimmeh.lol` - Input statements
-- `03_arith.lol` - Arithmetic operations
-- `04_smoosh_assign.lol` - String concatenation
-- `05_bool.lol` - Boolean operations
-- `06_comparison.lol` - Comparison operations
-- `07_ifelse.lol` - Conditional statements
-- `08_switch.lol` - Switch statements
-- `09_loops.lol` - Loop constructs
-- `10_functions.lol` - Function definitions and calls
-- `11_nested_loops.lol` - Nested loop examples
-- `12_nested_arithmetic.lol` - Complex nested arithmetic
-- `13_nested_conditionals.lol` - Nested conditional statements
-- `14_loops_with_conditionals.lol` - Loops with nested conditionals
-- `15_complex_expressions.lol` - Complex expression examples
-- `16_edge_cases.lol` - Edge cases and boundary conditions
-- `17_functions_nested.lol` - Nested function calls
-- `18_mixed_nesting.lol` - Mixed nesting scenarios
+Command-line utilities
+----------------------
+- `python src/main.py` — helper script to dump lexer tokens for sample files.
+- `validate_semantic_comprehensive.py` and `validate_semantic_all.py` — scripts
+  that run the pipeline against sample files in `src/tests/samples/`.
 
-## Example Program
+Testing
+-------
+The repository contains tests and sample `.lol` programs under `src/tests/samples/`.
+Run the provided test scripts (they use the project `src` path):
 
-```lolcode
-HAI
-    WAZZUP
-        I HAS A x
-        I HAS A y
-    BUHBYE
-
-    x R 10
-    y R 5
-
-    VISIBLE "Sum: " + SUM OF x AN y
-    VISIBLE "Difference: " + DIFF OF x AN y
-
-    BIGGR OF x AN y
-    O RLY?
-        YA RLY
-            VISIBLE "x is bigger"
-        NO WAI
-            VISIBLE "y is bigger or equal"
-    OIC
-
-    IM IN YR loop UPPIN YR i WILE BOTH SAEM i AN SMALLR OF i AN 5
-        VISIBLE "Iteration: " + i
-    IM OUTTA YR loop
-KTHXBYE
+```powershell
+python test_gui_integration.py
+python test_semantic_comprehensive.py
 ```
 
-## Architecture
+Notes & limitations
+-------------------
+- The runtime/execution in the GUI is a simplified simulation (not a full evaluator).
+- The semantic analyzer is comprehensive (declarations, scopes, function arity,
+  break/return placement), but complex runtime features (full function calling,
+  closures) are only partially simulated.
 
-### Lexer
-The lexical analyzer (`src/lexer/lexer.py`) converts LOLCODE source code into tokens:
-- Recognizes keywords (single and multi-word)
-- Handles literals (numbers, strings, booleans)
-- Identifies identifiers and operators
-- Removes comments (BTW and OBTW...TLDR)
+References
+----------
+- Recursive descent parsing: https://en.wikipedia.org/wiki/Recursive_descent_parser
+- Semantic analysis (compiler design): https://en.wikipedia.org/wiki/Semantic_analysis_(compilers)
 
-### Parser
-The recursive descent parser (`src/parser/parser.py`) builds an Abstract Syntax Tree (AST):
-- Implements operator precedence
-- Handles nested structures (loops, conditionals, functions)
-- Provides detailed error messages with line numbers
-- Supports all LOLCODE language constructs
+License
+-------
+This project was developed as part of CMSC 124 coursework.
 
-### GUI
-The graphical interface (`src/gui/lolcode_interpreter_gui.py`) provides:
-- Syntax highlighting (via lexer output)
-- Real-time parsing feedback
-- Symbol table visualization
-- Execution console
+Author
+------
+Aaron
 
-## Error Handling
-
-The parser provides comprehensive error detection:
-- Missing or unexpected tokens
-- Syntax errors with line numbers
-- Type mismatches
-- Undefined variables
-- Invalid expressions
-
-## Development
-
-### Running Tests
-
-Test the parser with sample files:
-
-```bash
-python src/test_parser.py
-python src/test_parser_runner.py
-python src/validate_samples.py
-```
-
-### Error Detection Tests
-
-Run comprehensive error detection:
-
-```bash
-python test_comprehensive_error_detection.py
-```
-
-## Limitations
-
-- Function execution is simulated (not fully implemented)
-- Some advanced LOLCODE features may not be supported
-- Error recovery is limited (parser stops at first error)
-
-## License
-
-This project is part of a CMSC 124 course assignment.
-
-## Author
-
-Developed as part of CMSC 124 - Programming Languages course project.
 
