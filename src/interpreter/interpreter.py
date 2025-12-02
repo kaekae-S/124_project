@@ -108,11 +108,21 @@ class Interpreter:
             parts = []
             for child in expr_node.children:
                 value = self.visit_expression(child)
-                parts.append(self.to_string(value))
+
+                # NOOB handling
+                if value is None:
+                    parts.append('')
+                else:
+                    parts.append(self.to_string(value))
             output = ' '.join(parts)
         else:
             value = self.visit_expression(expr_node)
-            output = self.to_string(value)
+
+            # NOOB handling
+            if value is None:
+                output = ''
+            else:
+                output = self.to_string(value)
         
         self.output.append(output)
         self.it_value = output
@@ -357,6 +367,8 @@ class Interpreter:
         parts = []
         for operand in node.operands:
             value = self.visit_expression(operand)
+            if value is None:
+                raise InterpreterError("Cannot concatenate NOOB in SMOOSH (use explicit typecast)")
             parts.append(self.to_string(value))
         return ''.join(parts)
     
@@ -368,6 +380,41 @@ class Interpreter:
     
     # Helper methods
     
+    def explicit_typecast(self, value, target_type):
+        """Explicitly typecast value to target_type.
+        NOOB can be explicitly typecast to empty/zero values:
+        - NOOB -> NUMBR: 0
+        - NOOB -> NUMBAR: 0.0
+        - NOOB -> YARN: "" (empty string)
+        - NOOB -> TROOF: FAIL (FALSE)
+        """
+
+        # NOOB typecasting
+        if value is None:
+            if target_type == 'NUMBR':
+                return 0
+            elif target_type == 'NUMBAR':
+                return 0.0
+            elif target_type == 'YARN':
+                return ""
+            elif target_type == 'TROOF':
+                return False
+            else:
+                raise InterpreterError(f"Unknown target type for typecast: {target_type}")
+        
+        # Non-NOOB typecasting
+        if target_type == 'NUMBR':
+            return int(self.to_number(value))
+        elif target_type == 'NUMBAR':
+            return float(self.to_number(value))
+        elif target_type == 'YARN':
+            return self.to_string(value)
+        elif target_type == 'TROOF':
+            return self.to_boolean(value)
+        else:
+           raise InterpreterError(f"Unknown type: {target_type}")
+       
+
     def to_number(self, value):
         """Convert value to number (int or float)."""
         if isinstance(value, (int, float)):
@@ -393,7 +440,7 @@ class Interpreter:
         if isinstance(value, bool):
             return 'WIN' if value else 'FAIL'
         elif value is None:
-            return 'NOOB'
+            raise InterpreterError("Cannot implicitly convert NOOB to YARN (use explicit typecast)")
         elif isinstance(value, str):
             return value
         else:
@@ -403,13 +450,13 @@ class Interpreter:
         """Convert value to boolean."""
         if isinstance(value, bool):
             return value
+        elif value is None:
+            return False
         elif isinstance(value, (int, float)):
             return value != 0
         elif isinstance(value, str):
             # Empty string or "FAIL" is false
             return value != "" and value != "FAIL" and value != "0"
-        elif value is None:
-            return False
         else:
             return True
     
