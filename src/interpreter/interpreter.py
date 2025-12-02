@@ -3,6 +3,7 @@ LOLCODE Interpreter
 Evaluates a parse tree and executes LOLCODE programs.
 """
 
+from platform import node
 from parser.parse_tree_nodes import *
 
 
@@ -30,7 +31,6 @@ class Interpreter:
         Returns the output as a string.
         """
         self.output = []
-        self.symbol_table = {}
         self.it_value = None
         
         # Execute the program
@@ -47,24 +47,56 @@ class Interpreter:
     
     def visit_statement_list(self, node):
         """Visit StatementList node: execute all statements."""
-        for stmt in node.statements:
-            self.visit_statement(stmt)
+        
+        for i, stmt in enumerate(node.statements):
+            
+            if hasattr(stmt, 'children') and stmt.children:
+                
+                self.visit_statement(stmt)
     
     def visit_statement(self, node):
         """Visit Statement node: dispatch to specific statement handler."""
+        # Check if the node itself is a WAZZUP_Block (not wrapped in Statement)
+        if hasattr(node, 'rule_name') and node.rule_name == 'WAZZUP_Block':
+            
+            # Execute statements within WAZZUP block
+            for child in node.children:
+                
+                if hasattr(child, 'rule_name'):
+                    # Process Statement wrappers
+                    if child.rule_name == 'Statement':
+                        
+                        self.visit_statement(child)
+                    # Process direct VariableDeclaration nodes
+                    elif child.rule_name in ('VariableDeclaration', 'VariableDeclarationNode'):
+                        
+                        self.visit_variable_declaration(child)
+            
+            return
+
         if not node.children:
             return
-        
+
         actual_stmt = node.children[0]
-        
-        # Handle WAZZUP block
+
+        # Handle WAZZUP block (when wrapped in Statement)
         if actual_stmt.rule_name == 'WAZZUP_Block':
+            
             # Execute statements within WAZZUP block
             for child in actual_stmt.children:
-                if hasattr(child, 'rule_name') and child.rule_name == 'Statement':
-                    self.visit_statement(child)
+               
+                if hasattr(child, 'rule_name'):
+                    # Process Statement wrappers
+                    if child.rule_name == 'Statement':
+                        
+                        self.visit_statement(child)
+                    # Process direct VariableDeclaration nodes
+                    elif child.rule_name in ('VariableDeclaration', 'VariableDeclarationNode'):
+                        
+                        self.visit_variable_declaration(child)
+            
             return
-        
+
         # Dispatch based on statement type
         if isinstance(actual_stmt, VariableDeclarationNode):
             self.visit_variable_declaration(actual_stmt)
@@ -88,17 +120,27 @@ class Interpreter:
     def visit_variable_declaration(self, node):
         """Visit VariableDeclaration: I HAS A var [ITZ expr]"""
         var_name = node.identifier_node.token['value']
+
         
+
         if node.expression_node:
             # Variable initialized with expression
+            
             value = self.visit_expression(node.expression_node)
+            
         else:
-            # Uninitialized variable defaults to NOOB
-            value = None
-        
+            # Uninitialized variable defaults to NOOB (None)
+            # If variable already exists in symbol table, keep its current value
+            if var_name in self.symbol_table:
+                value = self.symbol_table[var_name]
+            else:
+                value = None
+            
+
         self.symbol_table[var_name] = value
         self.it_value = value
-    
+        
+
     def visit_print_statement(self, node):
         """Visit PrintStatement: VISIBLE expr [expr]*"""
         expr_node = node.expression_node
@@ -290,10 +332,12 @@ class Interpreter:
     def visit_variable(self, node):
         """Visit Variable: return variable value from symbol table."""
         var_name = node.identifier_node.token['value']
+
         
+
         if var_name not in self.symbol_table:
             raise InterpreterError(f"Undefined variable: {var_name}")
-        
+
         return self.symbol_table[var_name]
     
     def visit_binary_expression(self, node):

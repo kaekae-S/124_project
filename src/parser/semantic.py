@@ -82,6 +82,15 @@ class SemanticAnalyzer:
                 self._declare_var(var_name, line)
             return
         
+        # Handle StatementNode wrapper - unwrap it first
+        elif name == 'Statement':
+            # StatementNode wrapper contains the actual statement as children[0]
+            if hasattr(stmt_node, 'children') and stmt_node.children:
+                inner = stmt_node.children[0]
+                if inner:
+                    self._collect_declarations(inner)
+            return
+        
         elif name == 'WAZZUP_Block':
             # Recursively collect from WAZZUP block's children (which include statements)
             for c in getattr(stmt_node, 'children', []) or []:
@@ -92,38 +101,13 @@ class SemanticAnalyzer:
             # Don't collect nested declarations from function bodies in first pass
             return
         
-        # For StatementNode wrappers or other containers, try unwrapping
-        inner = None
-        if hasattr(stmt_node, 'children') and stmt_node.children:
-            inner = stmt_node.children[0]
-        else:
-            inner = stmt_node
-        
-        if inner is None:
+        # Skip token nodes (WAZZUP, BUHBYE, HAI, KTHXBYE, etc.)
+        elif name in ('WAZZUP', 'BUHBYE', 'HAI', 'KTHXBYE', 'I_HAS_A', 'ITZ', 'R', 'VISIBLE', 'GIMMEH'):
             return
         
-        inner_name = getattr(inner, 'rule_name', inner.__class__.__name__)
-        
-        # Now check if the inner node is a statement we care about
-        if inner_name in ('VariableDeclaration', 'VariableDeclarationNode'):
-            ident = getattr(inner, 'identifier_node', None)
-            var_name = self._get_identifier_name(ident)
-            line = getattr(ident, 'line', None) or (ident.token['line'] if getattr(ident, 'token', None) else None)
-            if var_name:
-                self._declare_var(var_name, line)
-        elif inner_name == 'WAZZUP_Block':
-            # Recursively collect from WAZZUP block
-            for c in getattr(inner, 'children', []) or []:
-                self._collect_declarations(c)
-        elif inner_name in ('Function', 'FunctionNode'):
-            # Don't collect nested declarations from function bodies
-            pass
-        else:
-            # For other statement types, still recursively check children for nested WAZZUP or Declarations
-            for c in getattr(inner, 'children', []) or []:
-                c_name = getattr(c, 'rule_name', None)
-                if c_name in ('VariableDeclaration', 'WAZZUP_Block'):
-                    self._collect_declarations(c)
+        # For other nodes, recursively check children
+        for c in getattr(stmt_node, 'children', []) or []:
+            self._collect_declarations(c)
 
     # --- Scope helpers
     def _enter_scope(self):
@@ -230,9 +214,14 @@ class SemanticAnalyzer:
             # WAZZUP...BUHBYE is just a grouping block in global scope, not a new scope.
             # Visit all statements inside it directly (don't create new scope).
             for c in getattr(inner, 'children', []) or []:
-                if getattr(c, 'rule_name', None) in ('VariableDeclaration', 'Assignment', 'InputStatement', 'Function', 'FunctionCall', 'Loop', 'Conditional', 'Switch'):
+                c_rule = getattr(c, 'rule_name', None)
+                # Process Statement wrappers and actual statement nodes
+                if c_rule == 'Statement':
                     self._visit_statement_wrapper(c)
-                else:
+                elif c_rule in ('VariableDeclaration', 'Assignment', 'InputStatement', 'Function', 'FunctionCall', 'Loop', 'Conditional', 'Switch'):
+                    self._visit_statement_wrapper(c)
+                # Skip token nodes like WAZZUP, BUHBYE
+                elif c_rule not in ('WAZZUP', 'BUHBYE'):
                     self._visit_node(c)
         else:
             # Generic visit of children
@@ -245,10 +234,9 @@ class SemanticAnalyzer:
 
     def _visit_variable_declaration(self, node):
         # Note: Variables were already declared in first pass (_collect_declarations)
-        # So we don't call _declare_var here again - that would cause duplicate errors!
-        # Just visit the initializer expression if present
+        # So we don't call _declare_var here - that would cause duplicate errors!
+        # Just visit the initializer expression if present to check for undefined references
         
-        # If there is an initializer expression, visit it
         expr = getattr(node, 'expression_node', None)
         if expr:
             self._visit_node(expr)

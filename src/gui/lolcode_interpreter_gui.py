@@ -267,7 +267,7 @@ KTHXBYE"""
     def execute_code(self):
         """Execute the LOLCODE program."""
         code = self.code_editor.get("1.0", tk.END + "-1c")
-        
+
         # Clear previous results
         for item in self.lexemes_tree.get_children():
             self.lexemes_tree.delete(item)
@@ -275,40 +275,59 @@ KTHXBYE"""
             self.symbol_tree.delete(item)
         self.output_console.config(state=tk.NORMAL)
         self.output_console.delete("1.0", tk.END)
-        
+
         try:
             # Tokenize
             tokens = self.lexer.tokenize(code)
-            
+
             # Populate lexemes table
             for token in tokens:
                 lexeme = token['value']
                 classification = self.get_token_classification(token['type'], lexeme)
                 self.lexemes_tree.insert("", tk.END, values=(lexeme, classification))
-            
+
             # Parse
             parse_tree = self.parser.parse(code)
-            
+
+            # Semantic analysis
+            errors = self.semantic_analyzer.analyze(parse_tree)
+            if errors:
+                error_msg = "Semantic Errors:\n" + "\n".join(errors)
+                self.output_console.insert(tk.END, error_msg, "error")
+                messagebox.showerror("Semantic Error", error_msg)
+                return  # Don't execute if there are semantic errors
+
+
             # Execute the program using interpreter
             interpreter = Interpreter()
-            
+
+            # **NEW: Pre-populate interpreter's symbol table with declared variables**
+            # Get all variables from semantic analyzer's global scope
+            if self.semantic_analyzer.scopes:
+                global_scope = self.semantic_analyzer.scopes[0]
+                
+                for var_name in global_scope:
+                    # Initialize all declared variables to None (NOOB) in interpreter
+                    interpreter.symbol_table[var_name] = None
+                    
+
             # Set input callback for GIMMEH statements
             def input_handler(var_name):
                 # Show input dialog
                 value = simpledialog.askstring("Input", f"Enter value for {var_name}:")
                 return value if value else ""
-            
+
             interpreter.set_input_callback(input_handler)
-            
+
             # Run the interpreter
             output = interpreter.interpret(parse_tree)
-            
+
             # Display output
             if output:
                 self.output_console.insert(tk.END, output + "\n")
             else:
                 self.output_console.insert(tk.END, "(No output)\n")
-            
+
             # Update symbol table
             symbol_table = interpreter.get_symbol_table()
             for identifier, value in symbol_table.items():
@@ -320,7 +339,7 @@ KTHXBYE"""
                 else:
                     display_value = str(value)
                 self.symbol_tree.insert("", tk.END, values=(identifier, display_value))
-            
+
         except SyntaxError as e:
             error_msg = f"Syntax Error: {str(e)}\n"
             self.output_console.insert(tk.END, error_msg, "error")
