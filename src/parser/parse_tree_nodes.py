@@ -181,6 +181,10 @@ class AssignmentNode(ParseTreeNode):
         self.identifier_node = identifier_node
         self.expression_node = expression_node
 
+class TypecastAssignmentNode(ParseTreeNode):
+    def __init__(self, identifier_token, type_token):
+        self.identifier = identifier_token
+        self.type_token = type_token
 
 # Boolean operation nodes
 class BooleanExpressionNode(ParseTreeNode):

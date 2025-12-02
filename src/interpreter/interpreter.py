@@ -17,7 +17,7 @@ class Interpreter:
     
     def __init__(self):
         self.symbol_table = {}  # Variable storage
-        self.it_value = None    # IT - implicit variable storing last expression result
+        self.it_value = None    # IT - implicit variable
         self.output = []        # Output buffer
         self.input_callback = None  # Callback for GIMMEH (input)
         
@@ -33,14 +33,13 @@ class Interpreter:
         self.output = []
         self.it_value = None
         
-        # Execute the program
+        
         self.visit_program(parse_tree)
         
         return '\n'.join(self.output)
     
     def visit_program(self, node):
         """Visit Program node: HAI Statements KTHXBYE"""
-        # Execute statement list
         statements_node = node.statements_node
         if statements_node:
             self.visit_statement_list(statements_node)
@@ -56,41 +55,26 @@ class Interpreter:
     
     def visit_statement(self, node):
         """Visit Statement node: dispatch to specific statement handler."""
-        # Check if the node itself is a WAZZUP_Block (not wrapped in Statement)
         if hasattr(node, 'rule_name') and node.rule_name == 'WAZZUP_Block':
             
-            # Execute statements within WAZZUP block
-            for child in node.children:
-                
-                if hasattr(child, 'rule_name'):
-                    # Process Statement wrappers
-                    if child.rule_name == 'Statement':
-                        
-                        self.visit_statement(child)
-                    # Process direct VariableDeclaration nodes
-                    elif child.rule_name in ('VariableDeclaration', 'VariableDeclarationNode'):
-                        
-                        self.visit_variable_declaration(child)
             
+            for child in node.children:
+                if hasattr(child, 'rule_name'):
+                    if child.rule_name == 'Statement':
+                        self.visit_statement(child)
+                    elif child.rule_name in ('VariableDeclaration', 'VariableDeclarationNode'):
+                        self.visit_variable_declaration(child)
             return
-
         if not node.children:
             return
 
         actual_stmt = node.children[0]
 
-        # Handle WAZZUP block (when wrapped in Statement)
         if actual_stmt.rule_name == 'WAZZUP_Block':
-            
-            # Execute statements within WAZZUP block
             for child in actual_stmt.children:
-               
                 if hasattr(child, 'rule_name'):
-                    # Process Statement wrappers
                     if child.rule_name == 'Statement':
-                        
                         self.visit_statement(child)
-                    # Process direct VariableDeclaration nodes
                     elif child.rule_name in ('VariableDeclaration', 'VariableDeclarationNode'):
                         
                         self.visit_variable_declaration(child)
@@ -124,13 +108,8 @@ class Interpreter:
         
 
         if node.expression_node:
-            # Variable initialized with expression
-            
             value = self.visit_expression(node.expression_node)
-            
         else:
-            # Uninitialized variable defaults to NOOB (None)
-            # If variable already exists in symbol table, keep its current value
             if var_name in self.symbol_table:
                 value = self.symbol_table[var_name]
             else:
@@ -145,13 +124,12 @@ class Interpreter:
         """Visit PrintStatement: VISIBLE expr [expr]*"""
         expr_node = node.expression_node
         
-        # Handle multiple expressions in VISIBLE
         if expr_node.rule_name == 'VISIBLE_Expressions':
             parts = []
             for child in expr_node.children:
                 value = self.visit_expression(child)
 
-                # NOOB handling
+                
                 if value is None:
                     parts.append('')
                 else:
@@ -160,7 +138,7 @@ class Interpreter:
         else:
             value = self.visit_expression(expr_node)
 
-            # NOOB handling
+            
             if value is None:
                 output = ''
             else:
@@ -174,13 +152,13 @@ class Interpreter:
         for identifier_node in node.identifier_nodes:
             var_name = identifier_node.token['value']
             
-            # Get input (use callback if provided, otherwise empty string)
+            
             if self.input_callback:
                 value = self.input_callback(var_name)
             else:
-                value = ""  # Default empty input for testing
+                value = ""  
             
-            # Try to convert to number if possible
+            
             value = self.parse_input(value)
             
             self.symbol_table[var_name] = value
@@ -194,6 +172,25 @@ class Interpreter:
         self.symbol_table[var_name] = value
         self.it_value = value
     
+    def visit_typecast_assignment(self, node):
+        var = node.identifier_node.token['value']
+        target_type = node.type_token['type']
+        old_value = self.symbol_table.get(var)
+        new_value = self.cast_value(old_value, target_type)
+        self.symbol_table[var] = new_value
+        self.it_value = new_value
+
+    def cast_value(self, value, target_type):
+        if target_type == "NUMBR":
+            return int(float(value))
+        if target_type == "NUMBAR":
+            return float(value)
+        if target_type == "YARN":
+            return str(value)
+        if target_type == "TROOF":
+            return "WIN" if value else "FAIL"
+
+
     def visit_loop(self, node):
         """Visit Loop: IM IN YR label UPPIN/NERFIN YR var WILE/TIL condition"""
         var_name = node.var_node.token['value']
@@ -212,47 +209,38 @@ class Interpreter:
             condition_value = self.visit_expression(node.condition_node)
             condition_bool = self.to_boolean(condition_value)
             
-            # WILE continues while true, TIL continues while false
-            # Check direction_node for UPPIN (uses WILE) or NERFIN (uses TIL)
-            # Actually, we need to check what follows in the node structure
-            # For now, assume UPPIN uses WILE (continue while true)
-            # and NERFIN uses TIL (continue until true)
             
-            # Break if condition not met
+            
             if direction == 'UPPIN':
-                # WILE: continue while condition is true
                 if not condition_bool:
                     break
-            else:  # NERFIN
-                # TIL: continue until condition is true (i.e., while false)
+            else: 
                 if condition_bool:
                     break
             
-            # Execute loop body
             for stmt in node.body_statements:
                 self.visit_statement(stmt)
             
-            # Increment/decrement loop variable
             current_value = self.symbol_table[var_name]
             if direction == 'UPPIN':
                 self.symbol_table[var_name] = self.to_number(current_value) + 1
-            else:  # NERFIN
+            else: 
                 self.symbol_table[var_name] = self.to_number(current_value) - 1
             
             iteration += 1
     
     def visit_conditional(self, node):
         """Visit Conditional: expr O RLY? YA RLY ... [MEBBE ...] [NO WAI ...] OIC"""
-        # Evaluate main condition
+        
         condition_value = self.visit_expression(node.condition_expr)
         condition_bool = self.to_boolean(condition_value)
         
         if condition_bool:
-            # Execute YA RLY block
+            
             for stmt in node.ya_rly_statements:
                 self.visit_statement(stmt)
         else:
-            # Check MEBBE blocks
+            
             executed = False
             for mebbe_expr, mebbe_stmts in node.mebbe_blocks:
                 mebbe_value = self.visit_expression(mebbe_expr)
@@ -262,7 +250,7 @@ class Interpreter:
                     executed = True
                     break
             
-            # If no MEBBE matched, execute NO WAI block
+           
             if not executed and node.no_wai_statements:
                 for stmt in node.no_wai_statements:
                     self.visit_statement(stmt)
@@ -277,7 +265,7 @@ class Interpreter:
         for omg_expr, omg_stmts in node.omg_cases:
             case_value = self.visit_expression(omg_expr)
             if self.values_equal(switch_value, case_value):
-                # Execute case statements
+                
                 for stmt in omg_stmts:
                     self.visit_statement(stmt)
                 matched = True

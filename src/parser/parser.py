@@ -26,7 +26,7 @@ from parser.parse_tree_nodes import (
     VariableDeclarationNode, PrintStatementNode, InputStatementNode,
     ExpressionNode, BinaryExpressionNode, PrimaryExpressionNode,
     LiteralNode, VariableNode, ComparisonNode, BothSaemNode, DiffrintNode,
-    AssignmentNode, BooleanExpressionNode, NotNode, LoopNode, ConditionalNode, SwitchNode,
+    AssignmentNode, TypecastAssignmentNode, BooleanExpressionNode, NotNode, LoopNode, ConditionalNode, SwitchNode,
     FunctionNode, FunctionCallNode
 )
 
@@ -310,6 +310,9 @@ class Parser:
         # Check for assignment (Identifier R Expression)
         if self.current_token['type'] == 'Identifier' and self.peek(1) and self.peek(1)['value'] == 'R':
             stmt = self.parse_assignment()
+        # Check for assignment (ISNOW A Typecast)
+        elif self.current_token['type'] == 'Identifier' and self.peek(1)['value'] == 'IS NOW A':
+            stmt = self.parse_typecast_assignment()
         # Variable declaration: I HAS A var [ITZ expr]
         elif self.current_token['value'] == 'I HAS A':
             stmt = self.parse_variable_declaration()
@@ -350,6 +353,19 @@ class Parser:
         stmt_node = StatementNode("Statement", [stmt], line=line)
         return stmt_node
     
+    def parse_typecast_assignment(self):
+        ident = self.current_token
+        self.advance()   # identifier
+
+        self.expect("IS NOW A")
+        type_token = self.current_token
+        print(f"Token = {type_token}")
+        if type_token['value'] not in ("NUMBR","NUMBAR","YARN","TROOF"):
+            raise SyntaxError(f"Line {type_token['line']}: Expected type after 'IS NOW A'")
+
+        self.advance()
+        return TypecastAssignmentNode(ident, type_token)
+
     def parse_variable_declaration(self):
         """Parse VariableDeclaration → I HAS A Identifier [ITZ Expression]. Optional initialization."""
         line = self.current_token['line']
