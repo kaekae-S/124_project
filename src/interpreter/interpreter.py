@@ -1,0 +1,454 @@
+"""
+LOLCODE Interpreter
+Evaluates a parse tree and executes LOLCODE programs.
+"""
+
+from parser.parse_tree_nodes import *
+
+
+class InterpreterError(Exception):
+    """Exception raised during program execution."""
+    pass
+
+
+class Interpreter:
+    """Interpreter for LOLCODE parse trees."""
+    
+    def __init__(self):
+        self.symbol_table = {}  # Variable storage
+        self.it_value = None    # IT - implicit variable storing last expression result
+        self.output = []        # Output buffer
+        self.input_callback = None  # Callback for GIMMEH (input)
+        
+    def set_input_callback(self, callback):
+        """Set callback function for handling GIMMEH input."""
+        self.input_callback = callback
+        
+    def interpret(self, parse_tree):
+        """
+        Interpret a parse tree and execute the program.
+        Returns the output as a string.
+        """
+        self.output = []
+        self.symbol_table = {}
+        self.it_value = None
+        
+        # Execute the program
+        self.visit_program(parse_tree)
+        
+        return '\n'.join(self.output)
+    
+    def visit_program(self, node):
+        """Visit Program node: HAI Statements KTHXBYE"""
+        # Execute statement list
+        statements_node = node.statements_node
+        if statements_node:
+            self.visit_statement_list(statements_node)
+    
+    def visit_statement_list(self, node):
+        """Visit StatementList node: execute all statements."""
+        for stmt in node.statements:
+            self.visit_statement(stmt)
+    
+    def visit_statement(self, node):
+        """Visit Statement node: dispatch to specific statement handler."""
+        if not node.children:
+            return
+        
+        actual_stmt = node.children[0]
+        
+        # Handle WAZZUP block
+        if actual_stmt.rule_name == 'WAZZUP_Block':
+            # Execute statements within WAZZUP block
+            for child in actual_stmt.children:
+                if hasattr(child, 'rule_name') and child.rule_name == 'Statement':
+                    self.visit_statement(child)
+            return
+        
+        # Dispatch based on statement type
+        if isinstance(actual_stmt, VariableDeclarationNode):
+            self.visit_variable_declaration(actual_stmt)
+        elif isinstance(actual_stmt, PrintStatementNode):
+            self.visit_print_statement(actual_stmt)
+        elif isinstance(actual_stmt, InputStatementNode):
+            self.visit_input_statement(actual_stmt)
+        elif isinstance(actual_stmt, AssignmentNode):
+            self.visit_assignment(actual_stmt)
+        elif isinstance(actual_stmt, LoopNode):
+            self.visit_loop(actual_stmt)
+        elif isinstance(actual_stmt, ConditionalNode):
+            self.visit_conditional(actual_stmt)
+        elif isinstance(actual_stmt, SwitchNode):
+            self.visit_switch(actual_stmt)
+        elif actual_stmt.rule_name == 'FunctionCallStatement':
+            # Function call as statement
+            func_call = actual_stmt.children[0]
+            self.visit_function_call(func_call)
+    
+    def visit_variable_declaration(self, node):
+        """Visit VariableDeclaration: I HAS A var [ITZ expr]"""
+        var_name = node.identifier_node.token['value']
+        
+        if node.expression_node:
+            # Variable initialized with expression
+            value = self.visit_expression(node.expression_node)
+        else:
+            # Uninitialized variable defaults to NOOB
+            value = None
+        
+        self.symbol_table[var_name] = value
+        self.it_value = value
+    
+    def visit_print_statement(self, node):
+        """Visit PrintStatement: VISIBLE expr [expr]*"""
+        expr_node = node.expression_node
+        
+        # Handle multiple expressions in VISIBLE
+        if expr_node.rule_name == 'VISIBLE_Expressions':
+            parts = []
+            for child in expr_node.children:
+                value = self.visit_expression(child)
+                parts.append(self.to_string(value))
+            output = ' '.join(parts)
+        else:
+            value = self.visit_expression(expr_node)
+            output = self.to_string(value)
+        
+        self.output.append(output)
+        self.it_value = output
+    
+    def visit_input_statement(self, node):
+        """Visit InputStatement: GIMMEH var [AN var]*"""
+        for identifier_node in node.identifier_nodes:
+            var_name = identifier_node.token['value']
+            
+            # Get input (use callback if provided, otherwise empty string)
+            if self.input_callback:
+                value = self.input_callback(var_name)
+            else:
+                value = ""  # Default empty input for testing
+            
+            # Try to convert to number if possible
+            value = self.parse_input(value)
+            
+            self.symbol_table[var_name] = value
+            self.it_value = value
+    
+    def visit_assignment(self, node):
+        """Visit Assignment: var R expr"""
+        var_name = node.identifier_node.token['value']
+        value = self.visit_expression(node.expression_node)
+        
+        self.symbol_table[var_name] = value
+        self.it_value = value
+    
+    def visit_loop(self, node):
+        """Visit Loop: IM IN YR label UPPIN/NERFIN YR var WILE/TIL condition"""
+        var_name = node.var_node.token['value']
+        direction = node.direction_node.rule_name  # UPPIN or NERFIN
+        
+        # Initialize loop variable if not exists
+        if var_name not in self.symbol_table:
+            self.symbol_table[var_name] = 0
+        
+        # Execute loop
+        max_iterations = 10000  # Safety limit
+        iteration = 0
+        
+        while iteration < max_iterations:
+            # Evaluate condition
+            condition_value = self.visit_expression(node.condition_node)
+            condition_bool = self.to_boolean(condition_value)
+            
+            # WILE continues while true, TIL continues while false
+            # Check direction_node for UPPIN (uses WILE) or NERFIN (uses TIL)
+            # Actually, we need to check what follows in the node structure
+            # For now, assume UPPIN uses WILE (continue while true)
+            # and NERFIN uses TIL (continue until true)
+            
+            # Break if condition not met
+            if direction == 'UPPIN':
+                # WILE: continue while condition is true
+                if not condition_bool:
+                    break
+            else:  # NERFIN
+                # TIL: continue until condition is true (i.e., while false)
+                if condition_bool:
+                    break
+            
+            # Execute loop body
+            for stmt in node.body_statements:
+                self.visit_statement(stmt)
+            
+            # Increment/decrement loop variable
+            current_value = self.symbol_table[var_name]
+            if direction == 'UPPIN':
+                self.symbol_table[var_name] = self.to_number(current_value) + 1
+            else:  # NERFIN
+                self.symbol_table[var_name] = self.to_number(current_value) - 1
+            
+            iteration += 1
+    
+    def visit_conditional(self, node):
+        """Visit Conditional: expr O RLY? YA RLY ... [MEBBE ...] [NO WAI ...] OIC"""
+        # Evaluate main condition
+        condition_value = self.visit_expression(node.condition_expr)
+        condition_bool = self.to_boolean(condition_value)
+        
+        if condition_bool:
+            # Execute YA RLY block
+            for stmt in node.ya_rly_statements:
+                self.visit_statement(stmt)
+        else:
+            # Check MEBBE blocks
+            executed = False
+            for mebbe_expr, mebbe_stmts in node.mebbe_blocks:
+                mebbe_value = self.visit_expression(mebbe_expr)
+                if self.to_boolean(mebbe_value):
+                    for stmt in mebbe_stmts:
+                        self.visit_statement(stmt)
+                    executed = True
+                    break
+            
+            # If no MEBBE matched, execute NO WAI block
+            if not executed and node.no_wai_statements:
+                for stmt in node.no_wai_statements:
+                    self.visit_statement(stmt)
+    
+    def visit_switch(self, node):
+        """Visit Switch: expr WTF? [OMG expr ...]* [OMGWTF ...] OIC"""
+        # Evaluate switch expression
+        switch_value = self.visit_expression(node.switch_expr)
+        
+        # Check each OMG case
+        matched = False
+        for omg_expr, omg_stmts in node.omg_cases:
+            case_value = self.visit_expression(omg_expr)
+            if self.values_equal(switch_value, case_value):
+                # Execute case statements
+                for stmt in omg_stmts:
+                    self.visit_statement(stmt)
+                matched = True
+                break
+        
+        # If no case matched, execute OMGWTF (default)
+        if not matched and node.omgwtf_statements:
+            for stmt in node.omgwtf_statements:
+                self.visit_statement(stmt)
+    
+    def visit_expression(self, node):
+        """Visit Expression: dispatch to appropriate handler."""
+        if isinstance(node, LiteralNode):
+            return self.visit_literal(node)
+        elif isinstance(node, VariableNode):
+            return self.visit_variable(node)
+        elif isinstance(node, BinaryExpressionNode):
+            return self.visit_binary_expression(node)
+        elif isinstance(node, BooleanExpressionNode):
+            return self.visit_boolean_expression(node)
+        elif isinstance(node, NotNode):
+            return self.visit_not_expression(node)
+        elif isinstance(node, FunctionCallNode):
+            return self.visit_function_call(node)
+        elif node.rule_name == 'IT':
+            return self.it_value
+        elif node.rule_name == 'Smoosh':
+            return self.visit_smoosh(node)
+        else:
+            raise InterpreterError(f"Unknown expression type: {node.rule_name}")
+    
+    def visit_literal(self, node):
+        """Visit Literal: return literal value."""
+        token = node.literal_token
+        token_type = token['type']
+        value = token['value']
+        
+        if token_type == 'NUMBR':
+            return int(value)
+        elif token_type == 'NUMBAR':
+            return float(value)
+        elif token_type == 'YARN':
+            # Remove quotes
+            return value.strip('"')
+        elif token_type == 'TROOF':
+            return value == 'WIN'
+        elif token_type == 'NOOB':
+            return None
+        else:
+            return value
+    
+    def visit_variable(self, node):
+        """Visit Variable: return variable value from symbol table."""
+        var_name = node.identifier_node.token['value']
+        
+        if var_name not in self.symbol_table:
+            raise InterpreterError(f"Undefined variable: {var_name}")
+        
+        return self.symbol_table[var_name]
+    
+    def visit_binary_expression(self, node):
+        """Visit BinaryExpression: arithmetic or comparison operation."""
+        operator = node.operator_node.rule_name
+        left_value = self.visit_expression(node.left_node)
+        right_value = self.visit_expression(node.right_node)
+        
+        # Arithmetic operations
+        if operator == 'SUM_OF':
+            return self.to_number(left_value) + self.to_number(right_value)
+        elif operator == 'DIFF_OF':
+            return self.to_number(left_value) - self.to_number(right_value)
+        elif operator == 'PRODUKT_OF':
+            return self.to_number(left_value) * self.to_number(right_value)
+        elif operator == 'QUOSHUNT_OF':
+            right_num = self.to_number(right_value)
+            if right_num == 0:
+                raise InterpreterError("Division by zero")
+            return self.to_number(left_value) // right_num  # Integer division
+        elif operator == 'MOD_OF':
+            right_num = self.to_number(right_value)
+            if right_num == 0:
+                raise InterpreterError("Modulo by zero")
+            return self.to_number(left_value) % right_num
+        elif operator == 'BIGGR_OF':
+            return max(self.to_number(left_value), self.to_number(right_value))
+        elif operator == 'SMALLR_OF':
+            return min(self.to_number(left_value), self.to_number(right_value))
+        
+        # Comparison operations
+        elif operator == 'BOTH_SAEM':
+            return self.values_equal(left_value, right_value)
+        elif operator == 'DIFFRINT':
+            return not self.values_equal(left_value, right_value)
+        
+        # String concatenation
+        elif operator == 'CONCAT':
+            return self.to_string(left_value) + self.to_string(right_value)
+        
+        else:
+            raise InterpreterError(f"Unknown operator: {operator}")
+    
+    def visit_boolean_expression(self, node):
+        """Visit BooleanExpression: AND, OR, XOR, ALL OF, ANY OF."""
+        operator = node.operator
+        operands = [self.visit_expression(op) for op in node.operands]
+        operand_bools = [self.to_boolean(op) for op in operands]
+        
+        if operator == 'BOTH OF':
+            return operand_bools[0] and operand_bools[1]
+        elif operator == 'EITHER OF':
+            return operand_bools[0] or operand_bools[1]
+        elif operator == 'WON OF':
+            # XOR: exactly one true
+            return operand_bools[0] != operand_bools[1]
+        elif operator == 'ALL OF':
+            return all(operand_bools)
+        elif operator == 'ANY OF':
+            return any(operand_bools)
+        else:
+            raise InterpreterError(f"Unknown boolean operator: {operator}")
+    
+    def visit_not_expression(self, node):
+        """Visit NOT expression: logical negation."""
+        value = self.visit_expression(node.expression_node)
+        return not self.to_boolean(value)
+    
+    def visit_smoosh(self, node):
+        """Visit SMOOSH: string concatenation."""
+        parts = []
+        for operand in node.operands:
+            value = self.visit_expression(operand)
+            parts.append(self.to_string(value))
+        return ''.join(parts)
+    
+    def visit_function_call(self, node):
+        """Visit FunctionCall: I IZ func YR arg ..."""
+        # Function calls not fully implemented - placeholder
+        func_name = node.function_name.token['value']
+        raise InterpreterError(f"Function calls not yet implemented: {func_name}")
+    
+    # Helper methods
+    
+    def to_number(self, value):
+        """Convert value to number (int or float)."""
+        if isinstance(value, (int, float)):
+            return value
+        elif isinstance(value, bool):
+            return 1 if value else 0
+        elif isinstance(value, str):
+            # Try to parse as number
+            try:
+                if '.' in value:
+                    return float(value)
+                else:
+                    return int(value)
+            except ValueError:
+                return 0  # Default for non-numeric strings
+        elif value is None:
+            return 0
+        else:
+            return 0
+    
+    def to_string(self, value):
+        """Convert value to string."""
+        if isinstance(value, bool):
+            return 'WIN' if value else 'FAIL'
+        elif value is None:
+            return 'NOOB'
+        elif isinstance(value, str):
+            return value
+        else:
+            return str(value)
+    
+    def to_boolean(self, value):
+        """Convert value to boolean."""
+        if isinstance(value, bool):
+            return value
+        elif isinstance(value, (int, float)):
+            return value != 0
+        elif isinstance(value, str):
+            # Empty string or "FAIL" is false
+            return value != "" and value != "FAIL" and value != "0"
+        elif value is None:
+            return False
+        else:
+            return True
+    
+    def values_equal(self, left, right):
+        """Check if two values are equal."""
+        # Type coercion for comparison
+        if type(left) == type(right):
+            return left == right
+        
+        # Try numeric comparison
+        try:
+            return self.to_number(left) == self.to_number(right)
+        except:
+            # Fall back to string comparison
+            return self.to_string(left) == self.to_string(right)
+    
+    def parse_input(self, value):
+        """Parse input string to appropriate type."""
+        if not value:
+            return None
+        
+        # Try parsing as number
+        try:
+            if '.' in value:
+                return float(value)
+            else:
+                return int(value)
+        except ValueError:
+            pass
+        
+        # Check for boolean
+        if value == 'WIN':
+            return True
+        elif value == 'FAIL':
+            return False
+        
+        # Otherwise return as string
+        return value
+    
+    def get_symbol_table(self):
+        """Get current symbol table for display."""
+        return self.symbol_table.copy()

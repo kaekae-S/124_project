@@ -2,7 +2,7 @@
 # Provides a graphical interface to write, parse, and execute LOLCODE programs
 
 import tkinter as tk
-from tkinter import ttk, scrolledtext, filedialog, messagebox
+from tkinter import ttk, scrolledtext, filedialog, messagebox, simpledialog
 import sys
 import os
 
@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from lexer.lexer import Lexer
 from parser.parser import Parser
 from parser.semantic import SemanticAnalyzer
+from interpreter.interpreter import Interpreter
 
 
 class LOLCODEInterpreterGUI:
@@ -264,10 +265,10 @@ KTHXBYE"""
         self.output_console.config(state=tk.DISABLED)
         
     def execute_code(self):
-        """Run the LOLCODE: tokenize, parse, semantic check, and simulate execution."""
+        """Execute the LOLCODE program."""
         code = self.code_editor.get("1.0", tk.END + "-1c")
         
-        # Clear previous results from all tables and console
+        # Clear previous results
         for item in self.lexemes_tree.get_children():
             self.lexemes_tree.delete(item)
         for item in self.symbol_tree.get_children():
@@ -276,53 +277,62 @@ KTHXBYE"""
         self.output_console.delete("1.0", tk.END)
         
         try:
-            # Stage 1: Lexer - convert code string to tokens
+            # Tokenize
             tokens = self.lexer.tokenize(code)
             
-            # Display tokens in lexemes table
+            # Populate lexemes table
             for token in tokens:
                 lexeme = token['value']
                 classification = self.get_token_classification(token['type'], lexeme)
                 self.lexemes_tree.insert("", tk.END, values=(lexeme, classification))
             
-            # Stage 2: Parser - convert tokens to parse tree
+            # Parse
             parse_tree = self.parser.parse(code)
             
-            # Stage 3: Semantic Analyzer - check for logic/semantic errors
-            semantic_errors = self.semantic_analyzer.analyze(parse_tree)
+            # Execute the program using interpreter
+            interpreter = Interpreter()
             
-            # If errors found, show them and stop execution
-            if semantic_errors:
-                self.output_console.insert(tk.END, "SEMANTIC ERRORS DETECTED:\n", "error")
-                for error in semantic_errors:
-                    self.output_console.insert(tk.END, f"  {error}\n", "error")
-                self.output_console.insert(tk.END, "\nProgram halted - please fix semantic errors.\n", "error")
-                messagebox.showerror("Semantic Error", 
-                                   "Semantic errors detected:\n\n" + "\n".join(semantic_errors))
+            # Set input callback for GIMMEH statements
+            def input_handler(var_name):
+                # Show input dialog
+                value = simpledialog.askstring("Input", f"Enter value for {var_name}:")
+                return value if value else ""
+            
+            interpreter.set_input_callback(input_handler)
+            
+            # Run the interpreter
+            output = interpreter.interpret(parse_tree)
+            
+            # Display output
+            if output:
+                self.output_console.insert(tk.END, output + "\n")
             else:
-                # No errors: simulate execution and show output
-                self.output_console.insert(tk.END, "=== PROGRAM OUTPUT ===\n")
-                self.simulate_execution(code, tokens)
-                self.output_console.insert(tk.END, "=== END OUTPUT ===\n\n")
-                self.output_console.insert(tk.END, "Program executed successfully!\n", "success")
-                self.output_console.insert(tk.END, f"Parsed {len(tokens)} tokens\n")
-                self.output_console.insert(tk.END, f"Semantic analysis: PASS\n", "success")
+                self.output_console.insert(tk.END, "(No output)\n")
+            
+            # Update symbol table
+            symbol_table = interpreter.get_symbol_table()
+            for identifier, value in symbol_table.items():
+                # Format value for display
+                if isinstance(value, bool):
+                    display_value = 'WIN' if value else 'FAIL'
+                elif value is None:
+                    display_value = 'NOOB'
+                else:
+                    display_value = str(value)
+                self.symbol_tree.insert("", tk.END, values=(identifier, display_value))
             
         except SyntaxError as e:
-            # Parser found syntax errors
-            error_msg = f"SYNTAX ERROR: {str(e)}\n"
+            error_msg = f"Syntax Error: {str(e)}\n"
             self.output_console.insert(tk.END, error_msg, "error")
             messagebox.showerror("Syntax Error", str(e))
         except Exception as e:
-            # Other unexpected errors
-            error_msg = f"ERROR: {str(e)}\n"
+            error_msg = f"Runtime Error: {str(e)}\n"
             self.output_console.insert(tk.END, error_msg, "error")
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Runtime Error", str(e))
         finally:
-            # Always disable console and apply text colors
             self.output_console.config(state=tk.DISABLED)
+            # Configure error text color
             self.output_console.tag_config("error", foreground="red")
-            self.output_console.tag_config("success", foreground="green")
             
     def get_token_classification(self, token_type, value):
         """Convert token type to a descriptive label for display in lexemes table."""
